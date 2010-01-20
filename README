@@ -1,0 +1,23 @@
+GRABBY HANDS
+============
+
+SUMMARY
+-------
+A simple read-only JVM Kestrel client optimized for consuming logical
+queues hosted across multiple Kestrel instances. Connections are
+opened to each Kestrel for each requested queue and messages are
+read via blocking reads. Implemented in Scala, but callable from
+Java.
+
+GOALS
+-----
+Robustness, visibility, efficiency, low-latency.
+
+NON-GOALS
+---------
+A complete implementation of the memcache protocol.
+Scala Actors.
+
+LICENSE
+-------
+Apache 2.0 License. See included license file.

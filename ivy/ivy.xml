@@ -1,0 +1,27 @@
+<ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="com.twitter"
+    module="grabbyhands"
+    revision="1.0"
+    e:buildpackage="com.twitter.grabbyhands"
+    e:testclass="com.twitter.grabbyhands.TestRunner"
+    e:jarclassname="com.twitter.grabbyhands.Main"
+    e:thriftpackage="com.twitter.grabbyhands.gen"
+  />
+
+  <configurations>
+    <conf name="bootstrap" visibility="private" description="load scala compiler and libraries" />
+    <conf name="default" description="normal build" />
+    <conf name="test" visibility="private" description="build and run tests" />
+  </configurations>
+  <dependencies>
+    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.7" />
+    <dependency org="org.scala-lang" name="scala-library" rev="2.7.7" />
+    <dependency org="org.scala-tools.testing" name="specs" rev="1.6.1" conf="test->*" />
+    <dependency org="org.scala-tools" name="vscaladoc" rev="1.1-md-3" conf="bootstrap->*" />
+
+    <dependency org="net.lag" name="configgy" rev="1.4" />
+    <dependency org="commons-logging" name="commons-logging" rev="1.1" />
+    <dependency org="commons-lang" name="commons-lang" rev="2.2" />
+    <dependency org="com.twitter" name="xrayspecs" rev="1.0.7" conf="*" /> <!--auto-->
+  </dependencies>
+</ivy-module>
