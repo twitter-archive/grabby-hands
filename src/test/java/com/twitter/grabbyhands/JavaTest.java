@@ -14,7 +14,9 @@ public class JavaTest {
     protected void testCreate() {
         System.out.println("run testCreate");
         String[] servers = { "localhost:22133" };
-        GrabbyHands grabbyHands = new GrabbyHands(servers);
+        String[] queues = { "grabby_test" };
+        GrabbyHands grabbyHands = new GrabbyHands(
+            servers, queues, 16384, 1, 1, 1000, 1000);
         System.out.println("pass testCreate");
     }
 
