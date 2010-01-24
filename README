@@ -16,7 +16,18 @@ Robustness, visibility, efficiency, low-latency.
 NON-GOALS
 ---------
 A complete implementation of the memcache protocol.
+
 Scala Actors.
+
+FEATURES
+--------
+Highly-concurrent.
+
+Multiple Kestrel clusters can be supported by creating multiple
+instances of GrabbyHands.
+
+Arbitrary user-defined read and write timeout behaviors are possible
+by interacting directly with a Blocking Queue.
 
 LICENSE
 -------

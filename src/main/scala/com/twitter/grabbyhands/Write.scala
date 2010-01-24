@@ -16,8 +16,11 @@
 
 package com.twitter.grabbyhands
 
-import java.util.concurrent.atomic.AtomicLong
+import java.nio.ByteBuffer
+import java.util.concurrent.{CountDownLatch}
 
-class Counters() {
-  val threads = new AtomicLong(0)
+// Note: ByteBuffer.wrap(some_string.getBytes())
+class Write(val message: ByteBuffer) {
+  val written = new CountDownLatch(1)
+  val cancel = new CountDownLatch(1)
 }

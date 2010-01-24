@@ -1,33 +1,54 @@
-/** Copyright 2010 Twitter, Inc. */
+/*
+ * Copyright 2010 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.twitter.grabbyhands
 
-import java.util.concurrent.{BlockingQueue, CountDownLatch}
+import java.util.concurrent.BlockingQueue
 
-protected class Connection(grabby: GrabbyHands,
-                           host: String,
-                           port: Int,
-                           queue: String,
-                           deliveryQueue: BlockingQueue[String]
-                         ) extends Runnable {
-  val name = host + ":" + port + ":" + queue
-  protected val counters = new ConnectionCounters()
-  protected val haltLatch = new CountDownLatch(1)
+protected class Connection(grabbyHands: GrabbyHands,
+                           connectionName: String,
+                           queueCounters: QueueCounters,
+                           server: String,
+                           queueName: String,
+                           recvQueue: BlockingQueue[String],
+                           sendQueue: BlockingQueue[Write]
+                         ) {
+  val log = grabbyHands.log
+  protected val send = new ConnectionSend(
+    grabbyHands, connectionName, queueCounters, server, queueName, sendQueue)
+  protected val recv = new ConnectionRecv(
+    grabbyHands, connectionName, queueCounters, server, queueName, recvQueue, send)
+  protected val recvThread = newThread(recv)
+  protected val sendThread = newThread(send)
 
-  def run() {
-    println("connection " + name + " start")
-    grabby.counters.threads.incrementAndGet()
-    while (haltLatch.getCount() > 0) {
-      Thread.sleep(100)
-    }
-    grabby.counters.threads.decrementAndGet()
-    println("connection " + name + " end")
+  def newThread(runnable: Runnable): Thread = {
+    val thread = new Thread(runnable)
+    thread.setDaemon(true)
+    thread.start()
+    thread
+  }
+
+  def join() {
+    halt()
+    recvThread.join()
+    sendThread.join()
   }
 
   def halt() {
-    haltLatch.countDown()
-  }
-
-  def getCounters(): ConnectionCounters = {
-    counters
+    recv.halt()
+    send.halt()
   }
 }

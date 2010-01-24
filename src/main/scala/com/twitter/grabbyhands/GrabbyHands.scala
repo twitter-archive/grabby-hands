@@ -1,74 +1,68 @@
-/** Copyright 2010 Twitter, Inc. */
+/*
+ * Copyright 2010 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.twitter.grabbyhands
 
-import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
-import scala.collection.mutable.{ArrayBuffer, HashMap, ListBuffer}
+import scala.collection.mutable.{HashMap, ListBuffer}
+import java.util.concurrent.BlockingQueue
+import java.util.logging.Logger
 
-class GrabbyHands(servers: Array[String],
-                  queues: Array[String],
-                  maxQueueDepth: Int,
-                  connectionsPerQueue:Int,
-                  maxMessageBytes:Int,
-                  readTimeoutMs: Int,
-                  reconnectTimeoutMs: Int) {
+class GrabbyHands(val config: Config) {
+  val log = Logger.getLogger("com.twitter.grabbyhands")
+
   protected[grabbyhands] val counters = new Counters()
-
-  protected val deliveryQueues: Map[String, BlockingQueue[String]] = {
-    val rv = new HashMap[String, BlockingQueue[String]]()
-    for (queue <- queues) {
-      rv + (queue -> new LinkedBlockingQueue(maxQueueDepth))
-    }
+  protected[grabbyhands] val serverCounters: Map[String, ServerCounters] = {
+    val rv = new HashMap[String, ServerCounters]()
+    config.servers.foreach(server => rv + (server -> new ServerCounters()))
     Map() ++ rv
   }
 
-  protected val connections: Array[Connection] = {
-    val rv = new ArrayBuffer[Connection]()
-    for (server <- servers) {
-      val tokens = server.split(":")
-      val host = tokens(0)
-      val port = Integer.parseInt(tokens(1))
-      for (queue <- queues) {
-        for (idx <- 1 to connectionsPerQueue) {
-          println("server " + server + " queue " + queue + " idx " + idx)
-          val connection = new Connection(this, host, port, queue, deliveryQueues(queue))
-          rv += connection
-        }
-      }
-    }
-    rv.toArray
-  }
-
-  protected val threads: Array[Thread] = {
-    val rv = new ArrayBuffer[Thread]()
-    for (connection <- connections) {
-      val thread = new Thread(connection)
-      thread.start()
-      rv += thread
-    }
-    rv.toArray
-  }
-
+  protected[grabbyhands] val queues = Queue.factory(this)
 
   def getCounters(): Counters = {
     counters
   }
 
-  def getConnectionCounters(): List[ConnectionCounters] = {
-    val rv = new ListBuffer[ConnectionCounters]()
-    connections.foreach(rv + _.getCounters())
-    List() ++ rv
+  def getQueueCounters(): List[QueueCounters] = {
+    val rv = new ListBuffer[QueueCounters]()
+    queues.values.foreach(queue => rv + queue.getCounters())
+    rv.toList
   }
 
-  def getDeliveryQueue(queue: String): BlockingQueue[String] = {
-    deliveryQueues(queue)
+  def getServerCounters(): List[ServerCounters] = {
+    serverCounters.values.toList
+  }
+
+  def getRecvQueue(queue: String): BlockingQueue[String] = {
+    queues(queue).recvQueue
+  }
+
+  def getSendQueue(queue: String): BlockingQueue[Write] = {
+    queues(queue).sendQueue
   }
 
   def halt() {
-    connections.foreach(_.halt)
+    log.fine("grabbyhands halt")
+    queues.values.foreach(_.halt)
   }
 
   def join() {
+    log.fine("grabbyhands join start")
     halt()
-    threads.foreach(_.join)
+    queues.values.foreach(_.join)
+    log.fine("grabbyhands join end")
   }
 }

@@ -18,6 +18,15 @@ package com.twitter.grabbyhands
 
 import java.util.concurrent.atomic.AtomicLong
 
-class Counters() {
-  val threads = new AtomicLong(0)
+class ServerCounters() {
+  val bytesRecv = new AtomicLong()
+  val bytesSend = new AtomicLong()
+  val messagesRecv = new AtomicLong()
+  val messagseSend = new AtomicLong()
+
+  val connectionSuccess = new AtomicLong()
+  val connectionFail = new AtomicLong()
+  val connectionCurrent = new AtomicLong()
+  val connectionExceptions = new AtomicLong()
+  val protocolError = new AtomicLong()
 }
