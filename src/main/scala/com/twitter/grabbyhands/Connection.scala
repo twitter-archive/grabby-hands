@@ -31,8 +31,8 @@ protected class Connection(grabbyHands: GrabbyHands,
     grabbyHands, connectionName, queueCounters, server, queueName, sendQueue)
   protected val recv = new ConnectionRecv(
     grabbyHands, connectionName, queueCounters, server, queueName, recvQueue, send)
-  protected val recvThread = newThread(recv)
-  protected val sendThread = newThread(send)
+  recv.start()
+  send.start()
 
   def newThread(runnable: Runnable): Thread = {
     val thread = new Thread(runnable)
@@ -42,12 +42,15 @@ protected class Connection(grabbyHands: GrabbyHands,
   }
 
   def join() {
+    log.fine("Connection " + connectionName + " join start")
     halt()
-    recvThread.join()
-    sendThread.join()
+    recv.join()
+    send.join()
+    log.fine("Connection " + connectionName + " join end")
   }
 
   def halt() {
+    log.fine("Connection " + connectionName + " halt")
     recv.halt()
     send.halt()
   }

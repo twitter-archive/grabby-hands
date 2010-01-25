@@ -54,6 +54,7 @@ protected class ConnectionRecv(
       try {
         socket = SocketChannel.open(new InetSocketAddress(host, port))
         var connected = true
+        send.setSocket(socket)
 
         while (connected && haltLatch.getCount() > 0) {
           connected = process()
@@ -69,15 +70,20 @@ protected class ConnectionRecv(
   }
 
   def process(): Boolean = {
+    log.info("XXX send request")
     request.rewind()
     while (request.hasRemaining()) {
       socket.write(request)
     }
 
     buffer.rewind()
+    buffer.limit(expectEnd.capacity())
+    log.info("YYY read short response " + buffer.limit())
     // Read Shortest Possible Response
     while (buffer.hasRemaining()) {
+      log.info("YYY read short response pos" + buffer.position())
       socket.read(buffer)
+      log.info("YYY read short response pos" + buffer.position())
     }
 
     val oldPosition = buffer.position()
@@ -86,15 +92,18 @@ protected class ConnectionRecv(
     expectEnd.rewind()
     if (buffer == expectEnd) {
       // Empty read, timeout
+      log.info("YYY read timeout")
       queueCounters.readTimeouts.getAndIncrement()
       return true
     }
+    log.info("YYY read expected header")
     // Read looking for expected header
     buffer.position(oldPosition)
     buffer.limit(expectHeader.limit)
     while (buffer.hasRemaining()) {
       socket.read(buffer)
     }
+    log.info("YYY check expected header")
     buffer.rewind()
     expectHeader.rewind()
     if (buffer != expectHeader) {
@@ -123,6 +132,7 @@ protected class ConnectionRecv(
         payloadLength = Integer.parseInt(lengthBuffer.toString())
       }
     }
+    log.info("YYY payload len " + payloadLength)
     if (buffer.position() == buffer.limit() && payloadLength > maxMessageBytes ) {
       // Read to end of buffer w/o a valid integer
       log.warning("ConnectionRecv " + connectionName + " protocol error on length")
@@ -137,7 +147,7 @@ protected class ConnectionRecv(
       socket.read(buffer)
     }
     buffer.flip()
-    val payload = buffer.asCharBuffer().toString()
+    val payload = new String(buffer.array(), 0, buffer.limit())
     recvQueue.offer(payload, 999999, TimeUnit.HOURS)
 
     // Consume the END footer

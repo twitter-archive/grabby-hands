@@ -20,17 +20,21 @@ import java.util.concurrent.CountDownLatch
 
 protected abstract class ConnectionBase(grabbyHands: GrabbyHands,
                                         connectionName: String,
-                                        connectionType: String,
-                                        server: String) extends Runnable {
+                                        val connectionType: String,
+                                        server: String) extends Thread {
   val log = grabbyHands.log
   protected val haltLatch = new CountDownLatch(1)
   val serverCounters = grabbyHands.serverCounters(server)
 
-  def run() {
+  override def run() {
     log.fine(connectionType + " " + connectionName + " thread start")
     grabbyHands.counters.threads.getAndIncrement()
-    Thread.currentThread().setName(connectionName)
-    run2()
+    Thread.currentThread().setName(connectionType + " " + connectionName)
+    try {
+      run2()
+    } catch {
+      case ex: InterruptedException => null
+    }
     grabbyHands.counters.threads.getAndDecrement()
     log.fine(connectionType + " " + connectionName + " thread end")
   }
@@ -40,5 +44,6 @@ protected abstract class ConnectionBase(grabbyHands: GrabbyHands,
   def halt() {
     log.fine(connectionType + " " + connectionName + " halt")
     haltLatch.countDown()
+    this.interrupt()
   }
 }

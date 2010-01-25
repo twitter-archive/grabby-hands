@@ -15,29 +15,10 @@
  */
 package com.twitter.grabbyhands
 
-import org.specs.Specification
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
-object PositiveSpec extends Specification {
-
-  var grab: GrabbyHands = _
-  val queue = "grabby_test"
-
-  def ctor(connsPerQueue: Int): GrabbyHands = {
-    val config = new Config(
-      Array("localhost:22133"),
-      Array(queue),
-      connsPerQueue,
-      1,
-      1,
-      16384,
-      1000,
-      1000,
-      50)
-    grab = new GrabbyHands(config)
-    grab
-  }
+object PositiveSpec extends SpecBase {
 
   "positive" should {
 
@@ -45,12 +26,15 @@ object PositiveSpec extends Specification {
     }
 
     doAfter {
-      grab.join()
-      grab.getCounters.threads.get() must be_==(0)
-      grab = null
+      if (grab != null) {
+        grab.join()
+        grab.getCounters.threads.get() must be_==(0)
+        grab = null
+      }
     }
 
     "write one, read one" in {
+      AdHocRequest.deleteQueue(queue, host, port)
       ctor(1)
       grab must notBeNull
       val send = grab.getSendQueue(queue)
@@ -59,9 +43,18 @@ object PositiveSpec extends Specification {
       val write = new Write(ByteBuffer.wrap("text".getBytes()))
       write.written.getCount() must be_==(1)
       write.cancel.getCount() must be_==(1)
+      log.fine("before write")
       send.put(write)
 
+      log.fine("before read")
       val text = recv.poll(1, TimeUnit.SECONDS)
+      if (text == null) {
+        //XXX
+        log.fine("after read NULL")
+      } else{
+        //XXX
+        log.fine("after read " + text)
+      }
       text must notBeNull
 
       write.written.getCount() must be_==(0)
@@ -69,14 +62,17 @@ object PositiveSpec extends Specification {
     }
 
     "read empty queue" in {
+      ctor(1)
       fail("see if readTimeouts increase, recv counters don't increase")
     }
 
     "messages up to expected limit" in {
+      ctor(1)
       fail("XXX")
     }
 
     "huge messages" in {
+      ctor(1)
       fail("XXX")
     }
   }

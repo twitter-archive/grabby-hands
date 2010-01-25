@@ -42,11 +42,10 @@ protected class ConnectionSend(
     var write: Write = null
     val sendRetryMs = grabbyHands.config.sendRetryMs
 
-    val lengthBuffer = ByteBuffer.allocate(15)
     val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes())
     val buffers = new Array[ByteBuffer](5)
     buffers.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes()))
-    buffers.update(1, lengthBuffer)
+    // 1 set to each length
     buffers.update(2, newlineBuffer)
     // 3 set to each payload
     buffers.update(4, newlineBuffer)
@@ -56,19 +55,21 @@ protected class ConnectionSend(
       while (write == null && haltLatch.getCount() > 0) {
         write = sendQueue.poll(1, TimeUnit.SECONDS)
       }
+      log.finest(connectionType + " " + connectionName + " new message")
 
       written = false
       while (!written && write.cancel.getCount() > 0 && haltLatch.getCount() > 0) {
         synchronized {
           while (socket == null) {
+            log.finest(connectionType + " " + connectionType + " socket null, wait")
             this.wait()
           }
           threadLocalSocket = socket
         }
+        buffers(1) = ByteBuffer.wrap(Integer.toString(write.message.limit).getBytes())
+        buffers(3) = write.message
         try {
-          buffers(3) = write.message
           threadLocalSocket.write(buffers.toArray)
-
         } catch {
           case ex: IOException => {
             threadLocalSocket.close()
