@@ -24,103 +24,134 @@ import java.util.concurrent.{BlockingQueue, TimeUnit}
 
 // ConnectionRecv owns the socket, ConnectionSend only writes into the socket if available.
 protected class ConnectionRecv(
-  grabbyHands: GrabbyHands,
+  queue: Queue,
   connectionName: String,
-  queueCounters: QueueCounters,
-  server: String,
-  queueName: String,
-  recvQueue: BlockingQueue[String],
-  send: ConnectionSend
-) extends ConnectionBase(grabbyHands,
+  server: String
+) extends ConnectionBase(queue,
                          connectionName,
-                         "ConnectionRecv",
                          server) {
-  val host = server.split(":")(0)
-  val port = Integer.parseInt(server.split(":")(1))
+  val recvQueue = queue.recvQueue
+
   val maxMessageBytes = grabbyHands.config.maxMessageBytes
   protected val request = ByteBuffer.wrap((
     "get " + queueName + "/t=" + grabbyHands.config.kestrelReadTimeoutMs + "\r\n").getBytes)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
   protected val expectHeader = ByteBuffer.wrap(("VALUE " + queueName + " 0 ").getBytes)
-  // expectLengthMax cannot be too large, else very short messages cannot be read.
-  // 1 byte message = 1 byte length + \r\n + 1 byte payload + 3 bytes END + \r\n
-  // = 9, so cannot be larger than 9, else will block and deadlock
-  protected val expectLengthMax = 8 // \r\n + 6 length digits
   protected val buffer = ByteBuffer.allocate(maxMessageBytes + 100)
-  protected var socket: SocketChannel = _
 
-  override def run2() {
-    while (haltLatch.getCount() > 0) {
-      try {
-        socket = SocketChannel.open(new InetSocketAddress(host, port))
-        var connected = true
-        send.setSocket(socket)
-
-        while (connected && haltLatch.getCount() > 0) {
-          connected = process()
-        }
-      } catch {
-        case ex: Exception => {
-          log.info("ConnectionRecv " + connectionName + " exception " + ex.toString())
-          serverCounters.connectionExceptions.getAndIncrement()
-        }
-      }
-      socket.close()
-    }
-  }
-
-  def process(): Boolean = {
-    log.info("XXX send request")
+  def run2(): Boolean = {
+    log.finest(connectionName + " send start")
     request.rewind()
     while (request.hasRemaining()) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectWrite() == 0) {
+        serverCounters.connectionWriteTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout writing request")
+        return false
+      }
       socket.write(request)
     }
 
+    log.finest(connectionName + " read header")
+    // Both valid responses end with an expectEnd buffer
     buffer.rewind()
-    buffer.limit(expectEnd.capacity())
-    log.info("YYY read short response " + buffer.limit())
-    // Read Shortest Possible Response
-    while (buffer.hasRemaining()) {
-      log.info("YYY read short response pos" + buffer.position())
+    buffer.limit(buffer.capacity())
+    // Read until at least expectEnd bytes arrive
+    while (buffer.position() < expectEnd.capacity()) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectRead() == 0) {
+        serverCounters.connectionReadTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout reading response")
+        return false
+      }
       socket.read(buffer)
-      log.info("YYY read short response pos" + buffer.position())
     }
+    // May have END\r\n
+    log.finest(connectionName + " read bytes" + buffer.position())
 
-    val oldPosition = buffer.position()
-
+    var oldPosition = buffer.position()
     buffer.flip()
     expectEnd.rewind()
     if (buffer == expectEnd) {
       // Empty read, timeout
-      log.info("YYY read timeout")
-      queueCounters.readTimeouts.getAndIncrement()
+      log.finest(connectionName + " kestrel get timeout")
+      queueCounters.kestrelGetTimeouts.getAndIncrement()
       return true
     }
-    log.info("YYY read expected header")
-    // Read looking for expected header
+
+    // Read enough for expected header and at least a 1 digit length
     buffer.position(oldPosition)
-    buffer.limit(expectHeader.limit)
-    while (buffer.hasRemaining()) {
+    while (buffer.position() < expectHeader.capacity() + 1) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectRead() == 0) {
+        serverCounters.connectionReadTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout reading response")
+        return false
+      }
       socket.read(buffer)
     }
-    log.info("YYY check expected header")
-    buffer.rewind()
-    expectHeader.rewind()
-    if (buffer != expectHeader) {
-      log.warning("ConnectionRecv " + connectionName + " protocol error on header")
+    log.finest(connectionName + " read bytes" + buffer.position())
+
+    // At this point here, this is where you throw up your hands about how bad
+    // the memcache protocol is.
+    // Determine length of message
+    oldPosition = buffer.position() // beginning of length
+    var found = false
+    while (!found && buffer.hasRemaining()) {
+      if (buffer.get() == '\n') {
+        found == true
+      } else if (!buffer.hasRemaining()) {
+        // Read more, in the unlikely case that the entire header didn't come over at once
+        if (haltLatch.getCount() == 0) {
+          return false
+        }
+        if (selectRead() == 0) {
+          serverCounters.connectionReadTimeout.incrementAndGet()
+          log.fine(connectionName + " timeout reading response")
+          return false
+        }
+        socket.read(buffer)
+      }
+    }
+    if (!buffer.hasRemaining()) {
+      log.fine(connectionName + " protocol error on header reading length")
       serverCounters.protocolError.getAndIncrement()
       queueCounters.protocolError.getAndIncrement()
       return false
     }
+    val lengthEnd = buffer.position()
+    val lengthLength = lengthEnd - oldPosition
+    buffer.position(oldPosition)
+    val lengthBuffer = new Array[Byte](lengthLength)
+    buffer.get(lengthBuffer)
+    val payloadLength = Integer.parseInt(new String(lengthBuffer))
+    log.finest(connectionName + " payload length " + payloadLength)
 
-    buffer.rewind()
-    buffer.limit(expectLengthMax)
-    while (buffer.position < expectLengthMax) {
+    // Ensure that entire payload plus an expectEnd can be read
+    val payloadStart = lengthEnd + 1
+    val payloadEnd = payloadStart + payloadLength
+    val responseEnd = payloadEnd + expectEnd.capacity()
+    buffer.position(payloadStart)
+
+    while (buffer.limit() < responseEnd) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectRead() == 0) {
+        serverCounters.connectionReadTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout reading payload")
+        return false
+      }
       socket.read(buffer)
     }
-    // At this point here, this is where you throw up your hands about how bad
-    // the memcache protocol is.
-    buffer.rewind()
+
+    /*
     var payloadLength = 0
     val lengthBuffer = new StringBuilder(expectLengthMax)
     while (payloadLength == 0 && buffer.position() < buffer.limit()) {
@@ -132,33 +163,17 @@ protected class ConnectionRecv(
         payloadLength = Integer.parseInt(lengthBuffer.toString())
       }
     }
-    log.info("YYY payload len " + payloadLength)
-    if (buffer.position() == buffer.limit() && payloadLength > maxMessageBytes ) {
-      // Read to end of buffer w/o a valid integer
-      log.warning("ConnectionRecv " + connectionName + " protocol error on length")
-      serverCounters.protocolError.getAndIncrement()
-      queueCounters.protocolError.getAndIncrement()
-      return false
-    }
-    // Read just the payload
-    buffer.compact()
-    buffer.limit(payloadLength)
-    while (buffer.hasRemaining()) {
-      socket.read(buffer)
-    }
-    buffer.flip()
+    */
+    buffer.position(payloadStart)
     val payload = new String(buffer.array(), 0, buffer.limit())
     recvQueue.offer(payload, 999999, TimeUnit.HOURS)
 
     // Consume the END footer
     buffer.rewind()
     expectEnd.rewind()
-    buffer.limit(expectEnd.limit())
-    while (buffer.hasRemaining()) {
-      socket.read(buffer)
-    }
+    buffer.position(payloadEnd)
     if (buffer != expectEnd) {
-      log.warning("ConnectionRecv " + connectionName + " protocol error on footer")
+      log.fine(connectionName + " protocol error on footer")
       serverCounters.protocolError.getAndIncrement()
       queueCounters.protocolError.getAndIncrement()
       return false

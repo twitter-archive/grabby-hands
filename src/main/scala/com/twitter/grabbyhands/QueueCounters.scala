@@ -20,10 +20,10 @@ import java.util.concurrent.atomic.AtomicLong
 
 class QueueCounters() {
   val bytesRecv = new AtomicLong()
-  val bytesSend = new AtomicLong()
+  val bytesSent = new AtomicLong()
   val messagesRecv = new AtomicLong()
-  val messagseSend = new AtomicLong()
+  val messagesSent = new AtomicLong()
 
-  val readTimeouts = new AtomicLong()
+  val kestrelGetTimeouts = new AtomicLong()
   val protocolError = new AtomicLong()
 }

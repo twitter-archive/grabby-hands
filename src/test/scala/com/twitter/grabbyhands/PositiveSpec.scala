@@ -34,7 +34,8 @@ object PositiveSpec extends SpecBase {
     }
 
     "write one, read one" in {
-      AdHocRequest.deleteQueue(queue, host, port)
+      val adhoc = new AdHocRequest(host, port)
+      adhoc.deleteQueue(queue)
       ctor(1)
       grab must notBeNull
       val send = grab.getSendQueue(queue)

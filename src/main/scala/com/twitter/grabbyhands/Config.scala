@@ -17,24 +17,71 @@
 package com.twitter.grabbyhands
 
 import java.util.logging.Logger
+import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.reflect.BeanProperty
 
-case class Config(servers: Array[String],
-                  queueNames: Array[String],
-                  connectionsPerQueue:Int,
-                  recvQueueDepth: Int,
-                  sendQueueDepth: Int,
-                  maxMessageBytes:Int,
-                  kestrelReadTimeoutMs: Int,
-                  reconnectTimeoutMs: Int,
-                  sendRetryMs: Int) {
-  val log = Logger.getLogger("com.twitter.grabbyhands")
+class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigConnection {
+  protected val log = Logger.getLogger("com.twitter.grabbyhands")
+  protected[grabbyhands] val queues = new HashMap[String, ConfigQueue]()
+  val configConnection = new ConfigConnection()
 
-  log.config("servers=" + servers.mkString("[", ",", "]"))
-  log.config("queueNames=" + queueNames.mkString("[", ",", "]"))
-  log.config("recvQueueDepth=" + recvQueueDepth)
-  log.config("sendQueueDepth=" + sendQueueDepth)
-  log.config("maxMessageBytes=" + maxMessageBytes)
-  log.config("kestrelReadTimeoutMs=" + kestrelReadTimeoutMs)
-  log.config("reconnectTimeoutMs=" + reconnectTimeoutMs)
-  log.config("sendRetryMs=" + sendRetryMs)
+  val servers = {
+    val rv = new ListBuffer[String]
+    val iterator = serversJava.iterator()
+    while (iterator.hasNext()) {
+      rv += iterator.next()
+    }
+    rv.toList
+  }
+
+  @BeanProperty var maxMessageBytes = 65536
+  @BeanProperty var kestrelReadTimeoutMs = 1000
+  @BeanProperty var connectTimeoutMs = 1000
+  @BeanProperty var readWriteTimeoutMs = 1000
+  @BeanProperty var reconnectHolddownMs = 1000
+
+  def addQueue(name: String): ConfigQueue = {
+    val queue = new ConfigQueue(name, this)
+    queues + (name -> queue)
+    queue
+  }
+
+  // TODO: Rationalize java and scala addQueues()
+  def addQueues(names: Seq[String]): Map[String, ConfigQueue] = {
+    val rv = new HashMap[String, ConfigQueue]
+    for (name <- names) {
+      val queue = addQueue(name)
+      rv + (name -> addQueue(name))
+    }
+    Map() ++ rv
+  }
+
+  // TODO: Rationalize java and scala addQueues()
+  def addQueues(names: java.lang.Iterable[String]) : java.util.HashMap[String, ConfigQueue] = {
+    val rv = new java.util.HashMap[String, ConfigQueue]()
+    val iterator = names.iterator()
+    while (iterator.hasNext()) {
+      val name = iterator.next()
+      rv.put(name, addQueue(name))
+    }
+    rv
+  }
+
+  def record() {
+    log.config("servers=" + servers.mkString("[", ",", "]"))
+    queues.values.foreach(_.record())
+    log.config("maxMessageBytes=" + maxMessageBytes)
+    log.config("kestrelReadTimeoutMs=" + kestrelReadTimeoutMs)
+    log.config("connectTimeoutMs=" + connectTimeoutMs)
+    log.config("readWriteTimeoutMs=" + readWriteTimeoutMs)
+    log.config("reconnectHolddownMs=" + reconnectHolddownMs)
+  }
+}
+
+object Config {
+  def factory(servers: Seq[String]): Config = {
+    val args = new java.util.Vector[String](servers.length)
+    servers.foreach(server => args.add(server))
+    new Config(args)
+  }
 }

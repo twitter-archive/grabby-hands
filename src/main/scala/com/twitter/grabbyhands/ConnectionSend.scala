@@ -22,76 +22,96 @@ import java.nio.channels.SocketChannel
 import java.util.concurrent.{BlockingQueue, TimeUnit}
 import scala.collection.mutable.ArrayBuffer
 
-// ConnectionRecv owns the socket, ConnectionSend only writes into the socket if available.
 protected class ConnectionSend(
-  grabbyHands: GrabbyHands,
+  queue: Queue,
   connectionName: String,
-  queueCounters: QueueCounters,
-  server: String,
-  queueName: String,
-  sendQueue: BlockingQueue[Write]
-) extends ConnectionBase(grabbyHands,
+  server: String
+) extends ConnectionBase(queue,
                          connectionName,
-                         "ConnectionSend",
                          server) {
-  var socket: SocketChannel = _
+  protected val sendQueue = queue.sendQueue
 
-  override def run2() {
-    var threadLocalSocket: SocketChannel = null
-    var written = false
-    var write: Write = null
-    val sendRetryMs = grabbyHands.config.sendRetryMs
+  protected val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes())
+  protected val buffers = new Array[ByteBuffer](5)
+  buffers.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes()))
+  // 1 set to each length
+  buffers.update(2, newlineBuffer)
+  // 3 set to each payload
+  buffers.update(4, newlineBuffer)
+  protected val staticLength = {
+    var rv = 0
+    buffers.foreach(buffer => if (buffer != null) rv += buffer.capacity())
+    rv
+  }
 
-    val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes())
-    val buffers = new Array[ByteBuffer](5)
-    buffers.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes()))
-    // 1 set to each length
-    buffers.update(2, newlineBuffer)
-    // 3 set to each payload
-    buffers.update(4, newlineBuffer)
+  protected val expected = ByteBuffer.wrap("STORED\r\n".getBytes())
+  protected val buffer = ByteBuffer.allocate(expected.capacity())
 
-    while (haltLatch.getCount() > 0) {
-      write = null
-      while (write == null && haltLatch.getCount() > 0) {
-        write = sendQueue.poll(1, TimeUnit.SECONDS)
+  protected var written = false
+  protected var write: Write = null
+  protected var writeLength = 0
+
+  override def run2(): Boolean = {
+    while (write == null) {
+      if (haltLatch.getCount() == 0) {
+        return false
       }
-      log.finest(connectionType + " " + connectionName + " new message")
-
-      written = false
-      while (!written && write.cancel.getCount() > 0 && haltLatch.getCount() > 0) {
-        synchronized {
-          while (socket == null) {
-            log.finest(connectionType + " " + connectionType + " socket null, wait")
-            this.wait()
-          }
-          threadLocalSocket = socket
-        }
+      write = sendQueue.poll(1, TimeUnit.SECONDS)
+      if (write != null) {
+        // Don't redo this work when retrying same message
         buffers(1) = ByteBuffer.wrap(Integer.toString(write.message.limit).getBytes())
         buffers(3) = write.message
-        try {
-          threadLocalSocket.write(buffers.toArray)
-        } catch {
-          case ex: IOException => {
-            threadLocalSocket.close()
-            serverCounters.connectionExceptions.incrementAndGet()
-            log.fine(connectionName + " write exception " + ex.toString())
-            write.message.rewind()
-          }
-        }
-        write.written.countDown()
-        written = true
-        if (!written) {
-          Thread.sleep(sendRetryMs)
-        }
+        writeLength = staticLength + buffers(1).capacity() + buffers(3).capacity
       }
     }
-  }
+    log.finest(connectionName + " message to send")
 
-  protected[grabbyhands] def setSocket(socket: SocketChannel) {
-    synchronized {
-      this.socket = socket
-      this.notify()
+    if (write.cancel.getCount() == 0) {
+      log.finest(connectionName + " write cancelled")
+      return true
     }
-  }
 
+    // Start over with a fresh length
+    var remaining = writeLength.asInstanceOf[Long]
+
+    while (remaining > 0) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectWrite() == 0) {
+        serverCounters.connectionWriteTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout writing response")
+        return false
+      }
+      remaining -= socket.write(buffers.toArray)
+    }
+    log.finest(connectionName + " wrote")
+
+    buffer.flip()
+    while (buffer.hasRemaining()) {
+      if (haltLatch.getCount() == 0) {
+        return false
+      }
+      if (selectRead() == 0) {
+        serverCounters.connectionReadTimeout.incrementAndGet()
+        log.fine(connectionName + " timeout reading response")
+        return false
+      }
+      socket.read(buffer)
+    }
+
+    if (buffer != expected) {
+      serverCounters.protocolError.incrementAndGet()
+      queueCounters.protocolError.incrementAndGet()
+      log.fine(connectionName + " protocol error didn't get STORED")
+    }
+
+    queueCounters.messagesSent.incrementAndGet()
+    serverCounters.messagesSent.incrementAndGet()
+    queueCounters.bytesSent.addAndGet(writeLength)
+    serverCounters.bytesSent.addAndGet(writeLength)
+    write.written.countDown()
+
+    true
+  }
 }

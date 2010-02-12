@@ -19,29 +19,37 @@ package com.twitter.grabbyhands
 import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.mutable.{ArrayBuffer, HashMap, ListBuffer}
 
-class Queue(grabbyHands: GrabbyHands, queueName: String) {
-  val log = grabbyHands.log
-  protected[grabbyhands] val queueCounters = new QueueCounters()
+case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
+  protected val log = grabbyHands.log
+  protected[grabbyhands] val counters = new QueueCounters()
   protected[grabbyhands] val recvQueue = new LinkedBlockingQueue[String](
-    grabbyHands.config.recvQueueDepth)
+    config.recvQueueDepth)
   protected[grabbyhands] val sendQueue = new LinkedBlockingQueue[Write](
-    grabbyHands.config.sendQueueDepth)
+    config.sendQueueDepth)
 
-  protected val connections: Array[Connection] = {
-    val rv = new ArrayBuffer[Connection]()
+  protected val connections: Array[ConnectionBase] = {
+    val rv = new ArrayBuffer[ConnectionBase]()
     for (server <- grabbyHands.config.servers) {
-      for (idx <- 1 to grabbyHands.config.connectionsPerQueue) {
-        val connectionName = server + ":" + queueName + ":" + idx
-        val connection = new Connection(
-          grabbyHands, connectionName, queueCounters, server, queueName, recvQueue, sendQueue)
+      for (idx <- 1 to config.recvNumConnections) {
+        val connectionName = server + ":recv:" + config.name + ":" + idx
+        val connection = new ConnectionRecv(this, connectionName, server)
         rv += connection
+        connection.start()
       }
+
+      for (idx <- 1 to config.sendNumConnections) {
+        val connectionName = server + ":send:" + config.name + ":" + idx
+        val connection = new ConnectionRecv(this, connectionName, server)
+        rv += connection
+        connection.start()
+      }
+
     }
     rv.toArray
   }
 
   def getCounters(): QueueCounters = {
-    queueCounters
+    counters
   }
 
   def halt() {
@@ -57,8 +65,8 @@ class Queue(grabbyHands: GrabbyHands, queueName: String) {
 object Queue {
   def factory(grabbyHands: GrabbyHands): Map[String, Queue] = {
     val rv = new HashMap[String, Queue]()
-    grabbyHands.config.queueNames.foreach(
-      queueName => rv + (queueName -> new Queue(grabbyHands, queueName)))
+    grabbyHands.config.queues.values.foreach(
+      queue => rv + (queue.name -> new Queue(grabbyHands, queue)))
     Map() ++ rv
   }
 }

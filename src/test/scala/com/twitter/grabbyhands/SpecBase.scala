@@ -26,22 +26,16 @@ class SpecBase extends Specification {
   log.addHandler(handler)
 
   var grab: GrabbyHands = _
-  val queue = "grabby_test"
+  val queues = Array("grabby_test1", "grabby_test2", "grabby_test3")
   val host = "localhost"
   val port = 22133
 
   def ctor(connsPerQueue: Int): GrabbyHands = {
     log.fine("before ctor")
-    val config = new Config(
-      Array(host + ":" + port),
-      Array(queue),
-      connsPerQueue,
-      1,
-      1,
-      16384,
-      2000,
-      1000,
-      50)
+    val config = Config.factory(Array(host + ":" + port))
+    config.sendNumConnections = connsPerQueue
+    config.recvNumConnections = connsPerQueue
+    config.addQueue(queues(0))
     grab = new GrabbyHands(config)
     log.fine("after ctor")
     grab

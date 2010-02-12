@@ -16,19 +16,14 @@
 
 package com.twitter.grabbyhands
 
-import java.util.concurrent.atomic.AtomicLong
+import java.util.logging.Logger
 
-class ServerCounters() {
-  val bytesRecv = new AtomicLong()
-  val bytesSent = new AtomicLong()
-  val messagesRecv = new AtomicLong()
-  val messagesSent = new AtomicLong()
+class ConfigQueue(val name: String, config: Config) extends ConfigConnection(config) {
+  protected val log = Logger.getLogger("com.twitter.grabbyhands")
 
-  val connectionSuccess = new AtomicLong()
-  val connectionFail = new AtomicLong()
-  val connectionCurrent = new AtomicLong()
-  val connectionExceptions = new AtomicLong()
-  val connectionReadTimeout = new AtomicLong()
-  val connectionWriteTimeout = new AtomicLong()
-  val protocolError = new AtomicLong()
+  def record() = log.config(toString())
+
+  override def toString(): String = "queueName=" + name + super.toString()
+
+//  val configConnection = config.configConnection.clone()
 }

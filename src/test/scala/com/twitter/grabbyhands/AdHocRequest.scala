@@ -21,57 +21,46 @@ import java.nio.ByteBuffer
 import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util.logging.Logger
 
-object AdHocRequest {
-  val log = Logger.getLogger("grabbyhands")
-
-  def deleteQueue(queue: String, host: String, port: Int) {
+class AdHocRequest(host: String, port: Int) extends Socket {
+  def deleteQueue(queue: String) {
     log.fine("delete queue " + queue + " " + host + ":" + port)
-    request("delete " + queue + "\r\n", 100, "END", host, port, 2000)
+    request("delete " + queue + "\r\n", 100, "END")
     log.fine("delete queue " + queue + " " + host + ":" + port)
   }
 
-  def request(request: String,
-              responseMaxBytes: Int,
-              terminator: String,
-              host: String,
-              port: Int,
-              timeoutMs: Int): String = {
-    val socket = SocketChannel.open()
-    socket.configureBlocking(false)
-    socket.connect(new InetSocketAddress(host, port))
-    val selector = Selector.open();
-    socket.register(selector, SelectionKey.OP_CONNECT)
-    if (selector.select(timeoutMs) == 0 || !socket.finishConnect()) {
-      socket.close()
-      throw new Exception("connect timeout " + host + ":" + port)
-    }
-
+  def request(request: String, responseMaxBytes: Int, terminator: String): String = {
+    openBlock()
     val req = ByteBuffer.wrap(request.getBytes)
     req.rewind()
     while (req.hasRemaining()) {
+      if (selectWrite() == 0) {
+        close()
+        throw new Exception("write timeout " + host + ":" + port)
+      }
       socket.write(req)
     }
 
-    socket.register(selector, SelectionKey.OP_READ)
+    selectRead()
     val response = ByteBuffer.allocate(responseMaxBytes)
     response.rewind()
 
     while (response.hasRemaining()) {
-      if (selector.select(timeoutMs) == 0) {
-        socket.close()
+      if (selectRead() == 0) {
+        close()
         throw new Exception("read timeout " + host + ":" + port)
       }
       socket.read(response)
       response.flip()
       val rv = new String(response.array(), 0, response.limit())
       if (rv.contains(terminator)) {
-        socket.close()
+        close()
         return rv
       }
       response.position(response.limit())
       response.limit(response.capacity())
     }
-    socket.close()
+
+    close()
     throw new Exception ("response not found")
     ""
   }

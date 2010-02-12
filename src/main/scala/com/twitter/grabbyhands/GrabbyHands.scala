@@ -21,7 +21,7 @@ import java.util.concurrent.BlockingQueue
 import java.util.logging.Logger
 
 class GrabbyHands(val config: Config) {
-  val log = Logger.getLogger("grabbyhands")
+  protected[grabbyhands] val log = Logger.getLogger("grabbyhands")
 
   protected[grabbyhands] val counters = new Counters()
   protected[grabbyhands] val serverCounters: Map[String, ServerCounters] = {

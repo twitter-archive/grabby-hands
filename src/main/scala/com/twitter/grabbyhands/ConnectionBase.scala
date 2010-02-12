@@ -16,33 +16,62 @@
 
 package com.twitter.grabbyhands
 
+import java.net.InetSocketAddress
+import java.nio.ByteBuffer
+import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util.concurrent.CountDownLatch
 
-protected abstract class ConnectionBase(grabbyHands: GrabbyHands,
+protected abstract class ConnectionBase(queue: Queue,
                                         connectionName: String,
-                                        val connectionType: String,
-                                        server: String) extends Thread {
-  val log = grabbyHands.log
+                                        server: String) extends Thread with Socket {
+  val grabbyHands = queue.grabbyHands
+  val config = queue.config
+  val queueCounters = queue.counters
+  val queueName = config.name
+  host = server.split(":")(0)
+  port = Integer.parseInt(server.split(":")(1))
+  connectTimeoutMs = grabbyHands.config.connectTimeoutMs
+  readWriteTimeoutMs = grabbyHands.config.readWriteTimeoutMs
   protected val haltLatch = new CountDownLatch(1)
-  val serverCounters = grabbyHands.serverCounters(server)
+  protected val serverCounters = grabbyHands.serverCounters(server)
+
+  this.setDaemon(true)
 
   override def run() {
-    log.fine(connectionType + " " + connectionName + " thread start")
+    log.fine(connectionName + " thread start")
     grabbyHands.counters.threads.getAndIncrement()
-    Thread.currentThread().setName(connectionType + " " + connectionName)
-    try {
-      run2()
-    } catch {
-      case ex: InterruptedException => null
+    Thread.currentThread().setName(connectionName)
+
+    while (haltLatch.getCount() > 0) {
+      try {
+        log.finer(connectionName + " open start")
+        openBlock(haltLatch)
+        log.finer(connectionName + " open end")
+        var connected = true
+
+        while (connected && haltLatch.getCount() > 0) {
+          connected = run2()
+        }
+
+        if (!connected && haltLatch.getCount() > 0) {
+          Thread.sleep(grabbyHands.config.reconnectHolddownMs)
+        }
+      } catch {
+        case ex: Exception => {
+          log.fine(connectionName + " exception " + ex.toString())
+          serverCounters.connectionExceptions.getAndIncrement()
+        }
+      }
+      close()
     }
     grabbyHands.counters.threads.getAndDecrement()
-    log.fine(connectionType + " " + connectionName + " thread end")
+    log.fine(connectionName + " thread end")
   }
 
-  def run2()
+  def run2(): Boolean
 
   def halt() {
-    log.fine(connectionType + " " + connectionName + " halt")
+    log.fine(connectionName + " halt")
     haltLatch.countDown()
     this.interrupt()
   }
