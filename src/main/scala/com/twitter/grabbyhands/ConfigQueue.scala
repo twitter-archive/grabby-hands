@@ -21,9 +21,9 @@ import java.util.logging.Logger
 class ConfigQueue(val name: String, config: Config) extends ConfigConnection(config) {
   protected val log = Logger.getLogger("com.twitter.grabbyhands")
 
-  def record() = log.config(toString())
+  def record() = log.config(toString)
 
-  override def toString(): String = "queueName=" + name + super.toString()
+  override def toString(): String = "queueName=" + name + super.toString
 
 //  val configConnection = config.configConnection.clone()
 }

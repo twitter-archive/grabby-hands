@@ -16,15 +16,16 @@
 
 package com.twitter.grabbyhands
 
-import scala.collection.mutable.{HashMap, ListBuffer}
+import java.nio.ByteBuffer
 import java.util.concurrent.BlockingQueue
 import java.util.logging.Logger
+import scala.collection.mutable.HashMap
 
 class GrabbyHands(val config: Config) {
   protected[grabbyhands] val log = Logger.getLogger("grabbyhands")
 
-  protected[grabbyhands] val counters = new Counters()
-  protected[grabbyhands] val serverCounters: Map[String, ServerCounters] = {
+  val counters = new Counters()
+  val serverCounters: Map[String, ServerCounters] = {
     val rv = new HashMap[String, ServerCounters]()
     config.servers.foreach(server => rv + (server -> new ServerCounters()))
     Map() ++ rv
@@ -32,26 +33,25 @@ class GrabbyHands(val config: Config) {
 
   protected[grabbyhands] val queues = Queue.factory(this)
 
-  def getCounters(): Counters = {
-    counters
+  val queueCounters: Map[String, QueueCounters] = {
+    val rv = new HashMap[String, QueueCounters]()
+    queues.values.foreach(queue => rv + (queue.name -> queue.counters))
+    Map() ++ rv
   }
 
-  def getQueueCounters(): List[QueueCounters] = {
-    val rv = new ListBuffer[QueueCounters]()
-    queues.values.foreach(queue => rv + queue.getCounters())
-    rv.toList
-  }
-
-  def getServerCounters(): List[ServerCounters] = {
-    serverCounters.values.toList
-  }
-
-  def getRecvQueue(queue: String): BlockingQueue[String] = {
+  def getRecvQueue(queue: String): BlockingQueue[ByteBuffer] = {
     queues(queue).recvQueue
   }
 
   def getSendQueue(queue: String): BlockingQueue[Write] = {
     queues(queue).sendQueue
+  }
+
+  def deleteQueue(queue: String) {
+    for (server <- config.servers) {
+      val adhoc = new AdHocRequest(serverCounters(server), server)
+      adhoc.deleteQueue(queue)
+    }
   }
 
   def halt() {

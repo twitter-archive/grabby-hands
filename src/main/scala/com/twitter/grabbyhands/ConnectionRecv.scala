@@ -21,6 +21,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
 import java.util.concurrent.{BlockingQueue, TimeUnit}
+import java.util.logging.Level
 
 // ConnectionRecv owns the socket, ConnectionSend only writes into the socket if available.
 protected class ConnectionRecv(
@@ -32,152 +33,196 @@ protected class ConnectionRecv(
                          server) {
   val recvQueue = queue.recvQueue
 
-  val maxMessageBytes = grabbyHands.config.maxMessageBytes
   protected val request = ByteBuffer.wrap((
     "get " + queueName + "/t=" + grabbyHands.config.kestrelReadTimeoutMs + "\r\n").getBytes)
+  val response = ByteBuffer.allocate(grabbyHands.config.maxMessageBytes + 100)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
+  expectEnd.rewind()
   protected val expectHeader = ByteBuffer.wrap(("VALUE " + queueName + " 0 ").getBytes)
-  protected val buffer = ByteBuffer.allocate(maxMessageBytes + 100)
 
   def run2(): Boolean = {
-    log.finest(connectionName + " send start")
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " read")
+
+    // Send request
     request.rewind()
-    while (request.hasRemaining()) {
-      if (haltLatch.getCount() == 0) {
-        return false
-      }
-      if (selectWrite() == 0) {
-        serverCounters.connectionWriteTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout writing request")
-        return false
-      }
-      socket.write(request)
+    if (!writeBuffer(request)) {
+      return false
     }
 
-    log.finest(connectionName + " read header")
-    // Both valid responses end with an expectEnd buffer
-    buffer.rewind()
-    buffer.limit(buffer.capacity())
-    // Read until at least expectEnd bytes arrive
-    while (buffer.position() < expectEnd.capacity()) {
-      if (haltLatch.getCount() == 0) {
-        return false
-      }
-      if (selectRead() == 0) {
-        serverCounters.connectionReadTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout reading response")
-        return false
-      }
-      socket.read(buffer)
+    // Read either END or VALUE...END.
+    // Read until at least expectEnd bytes arrive.
+    response.clear()
+    setLongReadTimeout()
+    val readStatus = readBuffer(expectEnd.capacity, response)
+    setNormalReadTimeout()
+    if (!readStatus) {
+      return false
     }
-    // May have END\r\n
-    log.finest(connectionName + " read bytes" + buffer.position())
 
-    var oldPosition = buffer.position()
-    buffer.flip()
-    expectEnd.rewind()
-    if (buffer == expectEnd) {
+    log.finest(connectionName + " XXX read raw |" +
+               new String(response.array, 0, response.position) + "|")
+
+    val positionSave = response.position
+    response.flip()
+
+    //XXX
+    //XXX
+    log.finest("A %d %d %d %d".format(response.position, response.limit,
+                                      expectEnd.position, expectEnd.limit))
+    //XXX
+    //XXX
+
+    // May have END\r\n indicating null read, or may have payload
+    if (log.isLoggable(Level.FINEST))
+      log.finest(connectionName + " read response " + response.position)
+
+    // Bytebuffer.equals() ignores position
+    if (response.equals(expectEnd)) {
       // Empty read, timeout
-      log.finest(connectionName + " kestrel get timeout")
-      queueCounters.kestrelGetTimeouts.getAndIncrement()
+      if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " kestrel get timeout")
+      queueCounters.kestrelGetTimeouts.incrementAndGet()
       return true
     }
+    response.position(positionSave)
+    response.limit(response.capacity())
 
-    // Read enough for expected header and at least a 1 digit length
-    buffer.position(oldPosition)
-    while (buffer.position() < expectHeader.capacity() + 1) {
-      if (haltLatch.getCount() == 0) {
+    log.finest(connectionName + " position1 " + response.position)
+
+    if (response.position < expectHeader.capacity + 1) {
+      // Read enough for expected header and at least a 1 digit length.
+      if (!readBuffer(expectHeader.capacity + 1, response)) {
         return false
       }
-      if (selectRead() == 0) {
-        serverCounters.connectionReadTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout reading response")
-        return false
-      }
-      socket.read(buffer)
     }
-    log.finest(connectionName + " read bytes" + buffer.position())
+    if (log.isLoggable(Level.FINEST))
+      log.finest(connectionName + " read bytes " + response.position)
 
+    // Determine length of message.
     // At this point here, this is where you throw up your hands about how bad
     // the memcache protocol is.
-    // Determine length of message
-    oldPosition = buffer.position() // beginning of length
+
+    // Move position to the first byte of the length, the position just after expectHeader
+    response.flip()
+    response.position(expectHeader.capacity)
+
     var found = false
-    while (!found && buffer.hasRemaining()) {
-      if (buffer.get() == '\n') {
-        found == true
-      } else if (!buffer.hasRemaining()) {
+    while (!found && response.hasRemaining) {
+      if (response.get() == '\n') {
+        found = true
+      } else if (!response.hasRemaining()) {
+        log.finest(connectionName + " read additional header bytes")
         // Read more, in the unlikely case that the entire header didn't come over at once
         if (haltLatch.getCount() == 0) {
           return false
         }
-        if (selectRead() == 0) {
-          serverCounters.connectionReadTimeout.incrementAndGet()
-          log.fine(connectionName + " timeout reading response")
+        if (!selectRead()) {
           return false
         }
-        socket.read(buffer)
+        // Position is already at the limit, should be able to just append.
+        response.limit(response.capacity)
+        socket.read(response)
       }
     }
-    if (!buffer.hasRemaining()) {
+
+    if (!response.hasRemaining) {
       log.fine(connectionName + " protocol error on header reading length")
-      serverCounters.protocolError.getAndIncrement()
-      queueCounters.protocolError.getAndIncrement()
+      serverCounters.protocolError.incrementAndGet()
+      queueCounters.protocolError.incrementAndGet()
       return false
     }
-    val lengthEnd = buffer.position()
-    val lengthLength = lengthEnd - oldPosition
-    buffer.position(oldPosition)
-    val lengthBuffer = new Array[Byte](lengthLength)
-    buffer.get(lengthBuffer)
-    val payloadLength = Integer.parseInt(new String(lengthBuffer))
+    // response.position now points to the start of the payload (if ready, else where it will be.)
+
+    // Parse the payload length, ignoring 2 trailing chars \r\n
+    val payloadLength = Integer.parseInt(new String(
+      response.array, expectHeader.capacity, response.position - (2 + expectHeader.capacity)))
     log.finest(connectionName + " payload length " + payloadLength)
 
     // Ensure that entire payload plus an expectEnd can be read
-    val payloadStart = lengthEnd + 1
+    val payloadStart = response.position
     val payloadEnd = payloadStart + payloadLength
-    val responseEnd = payloadEnd + expectEnd.capacity()
-    buffer.position(payloadStart)
+    val footerStart = payloadEnd + 2   // \r\n padding
+    val footerEnd = footerStart + expectEnd.capacity
+    val needed = footerEnd - response.limit
 
-    while (buffer.limit() < responseEnd) {
-      if (haltLatch.getCount() == 0) {
+
+    log.finest(connectionName + " XXX start=" + payloadStart + " end=" + payloadEnd +
+               " footerStart=" + footerStart + " footerEnd=" + footerEnd + " needed=" + needed)
+
+    //XXX
+    //XXX
+    log.finest("B %d %d %d".format(response.position, response.limit, response.capacity))
+    //XXX
+    //XXX
+
+    if (needed > 0) {
+      log.finest(connectionName + " XXX need to read more payload " + needed)
+      response.position(response.limit)
+      response.limit(response.capacity)
+      //XXX
+      //XXX
+      log.finest("C %d %d %d".format(response.position, response.limit, response.capacity))
+      //XXX
+      //XXX
+      if (!readBuffer(footerEnd, response)) {
+        //XXX
+        //XXX
+        log.finest("D %d %d %d".format(response.position, response.limit, response.capacity))
+        //XXX
+        //XXX
         return false
       }
-      if (selectRead() == 0) {
-        serverCounters.connectionReadTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout reading payload")
-        return false
-      }
-      socket.read(buffer)
+      response.flip()
     }
+    //XXX
+    //XXX
+    log.finest("E %d %d %d".format(response.position, response.limit, response.capacity))
+    //XXX
+    //XXX
 
-    /*
-    var payloadLength = 0
-    val lengthBuffer = new StringBuilder(expectLengthMax)
-    while (payloadLength == 0 && buffer.position() < buffer.limit()) {
-      val ch = buffer.get()
-      if (ch >= '0' && ch <= '9') {
-        lengthBuffer.append(ch)
-      } else if (ch == '\n') {
-        // just ignore the \r
-        payloadLength = Integer.parseInt(lengthBuffer.toString())
-      }
-    }
-    */
-    buffer.position(payloadStart)
-    val payload = new String(buffer.array(), 0, buffer.limit())
-    recvQueue.offer(payload, 999999, TimeUnit.HOURS)
+
+    // Create a new ByteBuffer pointing to only the payload that shares the same array --
+    // avoiding a copy. Embargo this buffer until the footer validates.
+    val payload = ByteBuffer.allocate(payloadLength)
+    response.position(payloadStart)
+    response.get(payload.array)
+
+    log.finest(connectionName + " XXX payload |" +
+               new String(payload.array, 0, payload.capacity) + "|")
 
     // Consume the END footer
-    buffer.rewind()
+    log.finest(connectionName + " XXX raw footer |" +
+               new String(response.array, footerStart, expectEnd.capacity) + "|")
+    response.position(footerStart)
     expectEnd.rewind()
-    buffer.position(payloadEnd)
-    if (buffer != expectEnd) {
+    //XXX
+    //XXX
+    log.finest("F %d %d %d".format(response.position, response.limit, response.capacity))
+    //XXX
+    //XXX
+    if (response != expectEnd) {
       log.fine(connectionName + " protocol error on footer")
-      serverCounters.protocolError.getAndIncrement()
-      queueCounters.protocolError.getAndIncrement()
+      serverCounters.protocolError.incrementAndGet()
+      queueCounters.protocolError.incrementAndGet()
       return false
     }
+
+    serverCounters.messagesRecv.incrementAndGet()
+    serverCounters.bytesRecv.addAndGet(payloadLength)
+    queueCounters.messagesRecv.incrementAndGet()
+    queueCounters.bytesRecv.addAndGet(payloadLength)
+
+    recvQueue.offer(payload, 999999, TimeUnit.HOURS)
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " message read")
+
     true
+  }
+
+  // readTimeoutMs is assumed to be the saftey factor accounting for typical glitches, etc.
+  def setLongReadTimeout() {
+    readTimeoutMs = grabbyHands.config.kestrelReadTimeoutMs + grabbyHands.config.readTimeoutMs
+  }
+
+  def setNormalReadTimeout() {
+    readTimeoutMs = grabbyHands.config.readTimeoutMs
   }
 }

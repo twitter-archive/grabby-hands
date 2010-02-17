@@ -13,15 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.twitter.grabbyhands
 
 import java.nio.ByteBuffer
-import java.util.concurrent.{CountDownLatch}
+import java.util.concurrent.TimeUnit
 
-// Note: ByteBuffer.wrap(some_string.getBytes())
-class Write(val message: ByteBuffer) {
-  def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
-  val written = new CountDownLatch(1)
-  val cancel = new CountDownLatch(1)
+object NegativeSpec extends SpecBase {
+
+  "negative" should {
+
+    doBefore {
+      defaults()
+      grab = null
+    }
+
+    doAfter {
+      if (grab != null) {
+        grab.join()
+        grab.counters.threads.get must be_==(0)
+      }
+    }
+
+    "messages beyond expected limit" in {
+      ctor()
+      fail("XXX")
+    }
+  }
 }

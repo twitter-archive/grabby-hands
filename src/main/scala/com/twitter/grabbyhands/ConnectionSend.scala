@@ -20,7 +20,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
 import java.util.concurrent.{BlockingQueue, TimeUnit}
-import scala.collection.mutable.ArrayBuffer
+import java.util.logging.Level
 
 protected class ConnectionSend(
   queue: Queue,
@@ -31,87 +31,75 @@ protected class ConnectionSend(
                          server) {
   protected val sendQueue = queue.sendQueue
 
-  protected val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes())
-  protected val buffers = new Array[ByteBuffer](5)
-  buffers.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes()))
+  protected val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes)
+  protected var requestLength = 0
+  protected val requests = new Array[ByteBuffer](5)
+  requests.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes))
   // 1 set to each length
-  buffers.update(2, newlineBuffer)
+  requests.update(2, newlineBuffer)
   // 3 set to each payload
-  buffers.update(4, newlineBuffer)
+  requests.update(4, newlineBuffer)
   protected val staticLength = {
     var rv = 0
-    buffers.foreach(buffer => if (buffer != null) rv += buffer.capacity())
+    requests.foreach(buffer => if (buffer != null) rv += buffer.capacity)
     rv
   }
 
-  protected val expected = ByteBuffer.wrap("STORED\r\n".getBytes())
-  protected val buffer = ByteBuffer.allocate(expected.capacity())
+  protected val expected = ByteBuffer.wrap("STORED\r\n".getBytes)
+  protected val response = ByteBuffer.allocate(expected.capacity)
 
   protected var written = false
   protected var write: Write = null
-  protected var writeLength = 0
 
   override def run2(): Boolean = {
     while (write == null) {
-      if (haltLatch.getCount() == 0) {
+      if (haltLatch.getCount == 0) {
         return false
       }
       write = sendQueue.poll(1, TimeUnit.SECONDS)
       if (write != null) {
         // Don't redo this work when retrying same message
-        buffers(1) = ByteBuffer.wrap(Integer.toString(write.message.limit).getBytes())
-        buffers(3) = write.message
-        writeLength = staticLength + buffers(1).capacity() + buffers(3).capacity
+        requests(1) = ByteBuffer.wrap(Integer.toString(write.message.limit).getBytes)
+        requests(3) = write.message
+        requestLength = staticLength + requests(1).capacity + requests(3).capacity
       }
     }
-    log.finest(connectionName + " message to send")
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " message to send")
 
-    if (write.cancel.getCount() == 0) {
-      log.finest(connectionName + " write cancelled")
+    if (write.cancel.getCount == 0) {
+      log.finer(connectionName + " write canceled")
       return true
     }
 
     // Start over with a fresh length
-    var remaining = writeLength.asInstanceOf[Long]
-
-    while (remaining > 0) {
-      if (haltLatch.getCount() == 0) {
-        return false
-      }
-      if (selectWrite() == 0) {
-        serverCounters.connectionWriteTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout writing response")
-        return false
-      }
-      remaining -= socket.write(buffers.toArray)
-    }
-    log.finest(connectionName + " wrote")
-
-    buffer.flip()
-    while (buffer.hasRemaining()) {
-      if (haltLatch.getCount() == 0) {
-        return false
-      }
-      if (selectRead() == 0) {
-        serverCounters.connectionReadTimeout.incrementAndGet()
-        log.fine(connectionName + " timeout reading response")
-        return false
-      }
-      socket.read(buffer)
+    if (!writeBufferVector(requestLength, requests)) {
+      return false
     }
 
-    if (buffer != expected) {
+    response.clear()
+    if (!readBuffer(response.capacity, response)) {
+      return false
+    }
+    response.flip()
+
+    if (response != expected) {
       serverCounters.protocolError.incrementAndGet()
       queueCounters.protocolError.incrementAndGet()
-      log.fine(connectionName + " protocol error didn't get STORED")
+      response.rewind()
+      log.warning(
+        connectionName + " protocol error didn't get STORED, found |" +
+        new String(response.array, 0, response.limit) + "|")
+      // Disconnect on protocol error
+      return false
     }
 
     queueCounters.messagesSent.incrementAndGet()
     serverCounters.messagesSent.incrementAndGet()
-    queueCounters.bytesSent.addAndGet(writeLength)
-    serverCounters.bytesSent.addAndGet(writeLength)
+    queueCounters.bytesSent.addAndGet(write.message.capacity)
+    serverCounters.bytesSent.addAndGet(write.message.capacity)
     write.written.countDown()
-
+    write = null // Message sent, do not retry
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " wrote ok " + requestLength)
     true
   }
 }

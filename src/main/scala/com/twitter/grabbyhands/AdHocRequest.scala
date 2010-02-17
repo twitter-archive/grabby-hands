@@ -21,11 +21,15 @@ import java.nio.ByteBuffer
 import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util.logging.Logger
 
-class AdHocRequest(host: String, port: Int) extends Socket {
+class AdHocRequest(serverCountersArg: ServerCounters, serverArg: String) extends Socket {
+  server = serverArg
+  socketName = "adhocrequest:" + server
+  serverCounters = serverCountersArg
+
   def deleteQueue(queue: String) {
-    log.fine("delete queue " + queue + " " + host + ":" + port)
+    log.fine("start delete queue " + queue + " " + server)
     request("delete " + queue + "\r\n", 100, "END")
-    log.fine("delete queue " + queue + " " + host + ":" + port)
+    log.fine("end delete queue " + queue + " " + server)
   }
 
   def request(request: String, responseMaxBytes: Int, terminator: String): String = {
@@ -33,21 +37,20 @@ class AdHocRequest(host: String, port: Int) extends Socket {
     val req = ByteBuffer.wrap(request.getBytes)
     req.rewind()
     while (req.hasRemaining()) {
-      if (selectWrite() == 0) {
+      if (!selectWrite()) {
         close()
-        throw new Exception("write timeout " + host + ":" + port)
+        throw new Exception("write timeout " + server)
       }
       socket.write(req)
     }
 
-    selectRead()
     val response = ByteBuffer.allocate(responseMaxBytes)
     response.rewind()
 
     while (response.hasRemaining()) {
-      if (selectRead() == 0) {
+      if (!selectRead()) {
         close()
-        throw new Exception("read timeout " + host + ":" + port)
+        throw new Exception("read timeout " + server)
       }
       socket.read(response)
       response.flip()

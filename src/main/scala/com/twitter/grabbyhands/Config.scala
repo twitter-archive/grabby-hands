@@ -34,11 +34,12 @@ class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigCo
     rv.toList
   }
 
-  @BeanProperty var maxMessageBytes = 65536
-  @BeanProperty var kestrelReadTimeoutMs = 1000
-  @BeanProperty var connectTimeoutMs = 1000
-  @BeanProperty var readWriteTimeoutMs = 1000
-  @BeanProperty var reconnectHolddownMs = 1000
+  @BeanProperty var maxMessageBytes = Config.defaultMaxMessageBytes
+  @BeanProperty var kestrelReadTimeoutMs = Config.defaultKestrelReadTimeoutMs
+  @BeanProperty var connectTimeoutMs = Config.defaultConnectTimeoutMs
+  @BeanProperty var readTimeoutMs = Config.defaultReadTimeoutMs
+  @BeanProperty var writeTimeoutMs = Config.defaultWriteTimeoutMs
+  @BeanProperty var reconnectHolddownMs = Config.defaultReconnectHolddownMs
 
   def addQueue(name: String): ConfigQueue = {
     val queue = new ConfigQueue(name, this)
@@ -60,7 +61,7 @@ class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigCo
   def addQueues(names: java.lang.Iterable[String]) : java.util.HashMap[String, ConfigQueue] = {
     val rv = new java.util.HashMap[String, ConfigQueue]()
     val iterator = names.iterator()
-    while (iterator.hasNext()) {
+    while (iterator.hasNext) {
       val name = iterator.next()
       rv.put(name, addQueue(name))
     }
@@ -73,7 +74,8 @@ class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigCo
     log.config("maxMessageBytes=" + maxMessageBytes)
     log.config("kestrelReadTimeoutMs=" + kestrelReadTimeoutMs)
     log.config("connectTimeoutMs=" + connectTimeoutMs)
-    log.config("readWriteTimeoutMs=" + readWriteTimeoutMs)
+    log.config("readTimeoutMs=" + readTimeoutMs)
+    log.config("writeTimeoutMs=" + writeTimeoutMs)
     log.config("reconnectHolddownMs=" + reconnectHolddownMs)
   }
 }
@@ -84,4 +86,11 @@ object Config {
     servers.foreach(server => args.add(server))
     new Config(args)
   }
+
+  val defaultMaxMessageBytes = 65536
+  val defaultKestrelReadTimeoutMs = 2000
+  val defaultConnectTimeoutMs = 1000
+  val defaultReadTimeoutMs = 1000
+  val defaultWriteTimeoutMs = 1000
+  val defaultReconnectHolddownMs = 1000
 }

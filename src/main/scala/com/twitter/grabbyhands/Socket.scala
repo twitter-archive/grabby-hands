@@ -20,34 +20,42 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util.concurrent.CountDownLatch
-import java.util.logging.Logger
+import java.util.logging.{Level, Logger}
 
 trait Socket {
   val log = Logger.getLogger("grabbyhands")
   var socket: SocketChannel = _
-  var readSelector: Selector = _
-  var writeSelector: Selector = _
-  var host: String = _
-  var port: Int = _
-  var connectTimeoutMs = 1000
-  var readWriteTimeoutMs = 1000
+  //XXX See if we can go back to two selectors
+  //  var readSelector: Selector = _
+  //  var writeSelector: Selector = _
+  var readWriteSelector: Selector = _
+  var server: String = _
+  var serverCounters: ServerCounters = _
+  var socketName: String = _
+  var connectTimeoutMs = Config.defaultConnectTimeoutMs
+  var readTimeoutMs = Config.defaultReadTimeoutMs
+  var writeTimeoutMs = Config.defaultWriteTimeoutMs
 
   def open() {
+    serverCounters.connectionOpenAttempt.incrementAndGet()
     socket = SocketChannel.open()
     socket.configureBlocking(false)
-    socket.connect(new InetSocketAddress(host, port))
+    socket.socket().setTcpNoDelay(true)
+    val hostPort = server.split(":")
+    socket.connect(new InetSocketAddress(hostPort(0), Integer.parseInt(hostPort(1))))
     val connectSelector = Selector.open()
     socket.register(connectSelector, SelectionKey.OP_CONNECT)
+    serverCounters.connectionCurrent.incrementAndGet()
+
     if (connectSelector.select(connectTimeoutMs) == 0 || !socket.finishConnect()) {
       connectSelector.close()
       socket.close()
-      throw new Exception("connect timeout " + host + ":" + port)
+      serverCounters.connectionOpenTimeout.incrementAndGet()
+      throw new Exception("connect timeout " + server)
     }
     connectSelector.close()
-    readSelector = Selector.open()
-    writeSelector = Selector.open()
-    socket.register(readSelector, SelectionKey.OP_READ)
-    socket.register(writeSelector, SelectionKey.OP_WRITE)
+    readWriteSelector = Selector.open()
+    serverCounters.connectionOpenSuccess.incrementAndGet()
   }
 
   def openBlock() {
@@ -57,7 +65,7 @@ trait Socket {
 
   def openBlock(latch: CountDownLatch) {
     var connected = false
-    while (latch.getCount() > 0 && !connected) {
+    while (latch.getCount > 0 && !connected) {
       try {
         open()
         connected = true
@@ -67,17 +75,49 @@ trait Socket {
     }
   }
 
-  def selectRead(): Int = {
-    readSelector.select(readWriteTimeoutMs)
+  def selectRead(): Boolean = {
+    if (log.isLoggable(Level.FINEST)) log.finest(socketName + " readselect start")
+    socket.register(readWriteSelector, SelectionKey.OP_READ)
+    readWriteSelector.select(readTimeoutMs)
+    val keys = readWriteSelector.selectedKeys().iterator()
+    var rv = false
+    while (keys.hasNext) {
+      rv = keys.next().isValid
+      keys.remove()
+    }
+    if (!rv) {
+      serverCounters.connectionReadTimeout.incrementAndGet()
+      log.fine(socketName + " timeout reading response")
+    }
+    if (log.isLoggable(Level.FINEST)) log.finest(socketName + " readselect rv=" + rv)
+    rv
   }
 
-  def selectWrite(): Int = {
-    writeSelector.select(readWriteTimeoutMs)
+  def selectWrite(): Boolean = {
+    if (log.isLoggable(Level.FINEST)) log.finest(socketName + " writeselect start")
+    socket.register(readWriteSelector, SelectionKey.OP_WRITE)
+    readWriteSelector.select(writeTimeoutMs)
+    val keys = readWriteSelector.selectedKeys().iterator()
+    var rv = false
+    while (keys.hasNext) {
+      rv = keys.next().isValid
+      keys.remove()
+    }
+    if (!rv) {
+      serverCounters.connectionWriteTimeout.incrementAndGet()
+      log.fine(socketName + " timeout writing response")
+    }
+    if (log.isLoggable(Level.FINEST)) log.finest(socketName + " writeselect rv=" + rv)
+    rv
   }
 
   def close() {
-    if (readSelector != null) readSelector.close()
-    if (writeSelector != null) writeSelector.close()
-    if (socket != null) socket.close()
+    //    if (readSelector != null) readSelector.close()
+    //    if (writeSelector != null) writeSelector.close()
+    readWriteSelector.close()
+    if (socket != null) {
+      serverCounters.connectionCurrent.decrementAndGet()
+      socket.close()
+    }
   }
 }

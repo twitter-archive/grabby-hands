@@ -24,8 +24,10 @@ class ServerCounters() {
   val messagesRecv = new AtomicLong()
   val messagesSent = new AtomicLong()
 
-  val connectionSuccess = new AtomicLong()
-  val connectionFail = new AtomicLong()
+  val connectionOpenAttempt = new AtomicLong()
+  val connectionOpenSuccess = new AtomicLong()
+  val connectionOpenTimeout = new AtomicLong()
+
   val connectionCurrent = new AtomicLong()
   val connectionExceptions = new AtomicLong()
   val connectionReadTimeout = new AtomicLong()

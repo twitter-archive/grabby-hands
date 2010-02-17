@@ -16,17 +16,20 @@
 
 package com.twitter.grabbyhands
 
+import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.mutable.{ArrayBuffer, HashMap, ListBuffer}
 
 case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
   protected val log = grabbyHands.log
   protected[grabbyhands] val counters = new QueueCounters()
-  protected[grabbyhands] val recvQueue = new LinkedBlockingQueue[String](
+  protected[grabbyhands] val recvQueue = new LinkedBlockingQueue[ByteBuffer](
     config.recvQueueDepth)
   protected[grabbyhands] val sendQueue = new LinkedBlockingQueue[Write](
     config.sendQueueDepth)
+  val name = config.name
 
+  log.fine("Connection threads starting")
   protected val connections: Array[ConnectionBase] = {
     val rv = new ArrayBuffer[ConnectionBase]()
     for (server <- grabbyHands.config.servers) {
@@ -39,7 +42,7 @@ case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
 
       for (idx <- 1 to config.sendNumConnections) {
         val connectionName = server + ":send:" + config.name + ":" + idx
-        val connection = new ConnectionRecv(this, connectionName, server)
+        val connection = new ConnectionSend(this, connectionName, server)
         rv += connection
         connection.start()
       }
@@ -47,6 +50,9 @@ case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
     }
     rv.toArray
   }
+
+  connections.foreach(connection => connection.started())
+  log.fine("All connection threads running")
 
   def getCounters(): QueueCounters = {
     counters

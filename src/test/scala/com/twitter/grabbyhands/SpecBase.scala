@@ -23,21 +23,27 @@ class SpecBase extends Specification {
   val handler = new FileHandler("grabbyhands.log", true)
   handler.setFormatter(new SimpleFormatter())
   handler.setLevel(Level.ALL)
+  log.setLevel(Level.ALL)
   log.addHandler(handler)
 
   var grab: GrabbyHands = _
+  var config: Config = _
   val queues = Array("grabby_test1", "grabby_test2", "grabby_test3")
+  val queue = queues(0)
   val host = "localhost"
   val port = 22133
+  val hostPort = host + ":" + port
+  val shortMessageMax = 256
 
-  def ctor(connsPerQueue: Int): GrabbyHands = {
-    log.fine("before ctor")
-    val config = Config.factory(Array(host + ":" + port))
-    config.sendNumConnections = connsPerQueue
-    config.recvNumConnections = connsPerQueue
+  def defaults(): Config = {
+    config = Config.factory(Array(host + ":" + port))
+    config.maxMessageBytes = shortMessageMax
     config.addQueue(queues(0))
+    config
+  }
+
+  def ctor(): GrabbyHands = {
     grab = new GrabbyHands(config)
-    log.fine("after ctor")
     grab
   }
 }
