@@ -16,7 +16,10 @@
 
 package com.twitter.grabbyhands;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.List;
 
@@ -25,6 +28,10 @@ public class JavaTest {
         System.out.println("java test");
     }
 
+    protected List<String> servers = Arrays.asList("localhost:22133");
+    protected String queue = "grabby_javatest";
+    protected List<String> queues = Arrays.asList(queue);
+
     public void run() {
         testCreate();
         testWriteRead();
@@ -32,8 +39,6 @@ public class JavaTest {
 
     protected void testCreate() {
         System.out.println("run testCreate");
-        List<String> servers = Arrays.asList("localhost:22133");
-        List<String> queues = Arrays.asList("grabby_test");
 
         Config config = new Config(servers);
         HashMap<String, ConfigQueue> queueConfigs = config.addQueues(queues);
@@ -76,9 +81,32 @@ public class JavaTest {
     }
 
     protected void testWriteRead() {
-        System.out.println("run testWriteRead");
-        // TODO: Implement
-        System.exit(-1);
+        System.out.println("rw 1");
+        Config config = new Config(servers);
+        config.addQueues(queues);
+        GrabbyHands grabbyHands = new GrabbyHands(config);
+        BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
+        BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
+        System.out.println("rw 2");
+
+        String sendText = "text";
+        Write write = new Write(sendText);
+        assert(!write.written());
+        assert(!write.cancelled());
+        System.out.println("rw 3");
+        try {
+            send.put(write);
+            ByteBuffer buffer = recv.poll(2, TimeUnit.SECONDS);
+            assert(buffer != null);
+
+            String recvText = new String(buffer.array());
+            assert(recvText.equals(sendText));
+
+            assert(write.written());
+        } catch (InterruptedException e) {
+            assert(false);
+        }
+        System.out.println("pass testWriteRead");
     }
 
     public static void main(String[] args) {
