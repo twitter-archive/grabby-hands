@@ -114,7 +114,9 @@ trait Socket {
   def close() {
     //    if (readSelector != null) readSelector.close()
     //    if (writeSelector != null) writeSelector.close()
-    readWriteSelector.close()
+    if (readWriteSelector != null) {
+      readWriteSelector.close()
+    }
     if (socket != null) {
       serverCounters.connectionCurrent.decrementAndGet()
       socket.close()

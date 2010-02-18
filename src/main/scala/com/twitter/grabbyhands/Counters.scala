@@ -20,4 +20,5 @@ import java.util.concurrent.atomic.AtomicLong
 
 class Counters() {
   val threads = new AtomicLong(0)
+  val pausedThreads = new AtomicLong(0)
 }

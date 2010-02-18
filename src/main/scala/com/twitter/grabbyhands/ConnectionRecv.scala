@@ -37,6 +37,9 @@ protected class ConnectionRecv(
     "get " + queueName + "/t=" + grabbyHands.config.kestrelReadTimeoutMs + "\r\n").getBytes)
   val response = ByteBuffer.allocate(grabbyHands.config.maxMessageBytes + 100)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
+// XXX is this rewind() needed??
+// XXX is this rewind() needed??
+// XXX is this rewind() needed??
   expectEnd.rewind()
   protected val expectHeader = ByteBuffer.wrap(("VALUE " + queueName + " 0 ").getBytes)
 
@@ -59,18 +62,15 @@ protected class ConnectionRecv(
       return false
     }
 
-    log.finest(connectionName + " XXX read raw |" +
-               new String(response.array, 0, response.position) + "|")
+//    log.finest(connectionName + " XXX read raw |" +
+//               new String(response.array, 0, response.position) + "|")
+
+//    for (idx <- 0 to response.position) {
+//      log.finest(connectionName + " XXX read raw byte " + idx + " " + response.array(idx))
+//    }
 
     val positionSave = response.position
     response.flip()
-
-    //XXX
-    //XXX
-    log.finest("A %d %d %d %d".format(response.position, response.limit,
-                                      expectEnd.position, expectEnd.limit))
-    //XXX
-    //XXX
 
     // May have END\r\n indicating null read, or may have payload
     if (log.isLoggable(Level.FINEST))
@@ -144,41 +144,18 @@ protected class ConnectionRecv(
     val footerEnd = footerStart + expectEnd.capacity
     val needed = footerEnd - response.limit
 
-
     log.finest(connectionName + " XXX start=" + payloadStart + " end=" + payloadEnd +
                " footerStart=" + footerStart + " footerEnd=" + footerEnd + " needed=" + needed)
-
-    //XXX
-    //XXX
-    log.finest("B %d %d %d".format(response.position, response.limit, response.capacity))
-    //XXX
-    //XXX
 
     if (needed > 0) {
       log.finest(connectionName + " XXX need to read more payload " + needed)
       response.position(response.limit)
       response.limit(response.capacity)
-      //XXX
-      //XXX
-      log.finest("C %d %d %d".format(response.position, response.limit, response.capacity))
-      //XXX
-      //XXX
       if (!readBuffer(footerEnd, response)) {
-        //XXX
-        //XXX
-        log.finest("D %d %d %d".format(response.position, response.limit, response.capacity))
-        //XXX
-        //XXX
         return false
       }
       response.flip()
     }
-    //XXX
-    //XXX
-    log.finest("E %d %d %d".format(response.position, response.limit, response.capacity))
-    //XXX
-    //XXX
-
 
     // Create a new ByteBuffer pointing to only the payload that shares the same array --
     // avoiding a copy. Embargo this buffer until the footer validates.
@@ -186,19 +163,12 @@ protected class ConnectionRecv(
     response.position(payloadStart)
     response.get(payload.array)
 
-    log.finest(connectionName + " XXX payload |" +
-               new String(payload.array, 0, payload.capacity) + "|")
+//    log.finest(connectionName + " XXX payload |" +
+//               new String(payload.array, 0, payload.capacity) + "|")
 
     // Consume the END footer
-    log.finest(connectionName + " XXX raw footer |" +
-               new String(response.array, footerStart, expectEnd.capacity) + "|")
     response.position(footerStart)
     expectEnd.rewind()
-    //XXX
-    //XXX
-    log.finest("F %d %d %d".format(response.position, response.limit, response.capacity))
-    //XXX
-    //XXX
     if (response != expectEnd) {
       log.fine(connectionName + " protocol error on footer")
       serverCounters.protocolError.incrementAndGet()

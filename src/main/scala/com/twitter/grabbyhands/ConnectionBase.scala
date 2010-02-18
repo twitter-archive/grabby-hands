@@ -19,7 +19,8 @@ package com.twitter.grabbyhands
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{SelectionKey, Selector, SocketChannel}
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{CountDownLatch, Semaphore}
+import java.util.concurrent.atomic.AtomicBoolean
 
 protected abstract class ConnectionBase(queue: Queue,
                                         connectionName: String,
@@ -36,14 +37,18 @@ protected abstract class ConnectionBase(queue: Queue,
   writeTimeoutMs = grabbyHands.config.writeTimeoutMs
   protected val haltLatch = new CountDownLatch(1)
   protected val startedLatch = new CountDownLatch(1)
+  protected val paused = new AtomicBoolean(false)
+  protected val pauseBarrier = new Semaphore(1)
+  protected val resumeBarrier = new Semaphore(1)
 
   this.setDaemon(true)
 
   override def run() {
     log.fine(connectionName + " thread start")
-    grabbyHands.counters.threads.getAndIncrement()
+    grabbyHands.counters.threads.incrementAndGet()
     Thread.currentThread().setName(connectionName)
     startedLatch.countDown()
+    pauseBarrier.acquire()
 
     while (haltLatch.getCount > 0) {
       try {
@@ -53,6 +58,9 @@ protected abstract class ConnectionBase(queue: Queue,
         var connected = true
 
         while (connected && haltLatch.getCount > 0) {
+          if (paused.get()) {
+            doPause()
+          }
           connected = run2()
         }
 
@@ -63,12 +71,12 @@ protected abstract class ConnectionBase(queue: Queue,
       } catch {
         case ex: Exception => {
           log.fine(connectionName + " exception " + ex.toString)
-          serverCounters.connectionExceptions.getAndIncrement()
+          serverCounters.connectionExceptions.incrementAndGet()
         }
       }
       close()
     }
-    grabbyHands.counters.threads.getAndDecrement()
+    grabbyHands.counters.threads.decrementAndGet()
     log.fine(connectionName + " thread end")
   }
 
@@ -122,5 +130,31 @@ protected abstract class ConnectionBase(queue: Queue,
 
   def started() {
     startedLatch.await()
+  }
+
+  protected def doPause() {
+    pauseBarrier.release()
+    var count = grabbyHands.counters.pausedThreads.incrementAndGet()
+    log.fine(connectionName + " paused count=" + count)
+    resumeBarrier.acquire()
+    resumeBarrier.release()
+    count = grabbyHands.counters.pausedThreads.decrementAndGet()
+    paused.set(false)
+    pauseBarrier.acquire()
+    log.fine(connectionName + " resumed count=" + count)
+  }
+
+  def pause() {
+    log.fine(connectionName + " pause")
+    resumeBarrier.acquire()
+    paused.set(true)
+    pauseBarrier.acquire()
+    pauseBarrier.release()
+  }
+
+  // Cannot be resume(), as Thread snagged the method name.
+  def unPause() {
+    log.fine(connectionName + " resume")
+    resumeBarrier.release()
   }
 }

@@ -26,4 +26,5 @@ class QueueCounters() {
 
   val kestrelGetTimeouts = new AtomicLong()
   val protocolError = new AtomicLong()
+  val sendCancelled = new AtomicLong()
 }

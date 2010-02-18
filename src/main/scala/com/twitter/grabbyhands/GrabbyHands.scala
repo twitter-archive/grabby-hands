@@ -55,8 +55,9 @@ class GrabbyHands(val config: Config) {
   }
 
   def halt() {
-    log.fine("grabbyhands halt")
+    log.fine("grabbyhands halt start")
     queues.values.foreach(_.halt)
+    log.fine("grabbyhands halt end")
   }
 
   def join() {
@@ -64,5 +65,17 @@ class GrabbyHands(val config: Config) {
     halt()
     queues.values.foreach(_.join)
     log.fine("grabbyhands join end")
+  }
+
+  def pause() {
+    log.fine("grabbyhands pause start")
+    queues.values.foreach(_.pause)
+    log.fine("grabbyhands pause end")
+  }
+
+  def resume() {
+    log.fine("grabbyhands resume start")
+    queues.values.foreach(_.resume)
+    log.fine("grabbyhands resume end")
   }
 }

@@ -22,6 +22,7 @@ import java.util.concurrent.{CountDownLatch}
 // Note: ByteBuffer.wrap(some_string.getBytes())
 class Write(val message: ByteBuffer) {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
+  def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes))
   val written = new CountDownLatch(1)
   val cancel = new CountDownLatch(1)
 }

@@ -66,6 +66,14 @@ case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
     halt()
     connections.foreach(_.join)
   }
+
+  def pause() {
+    connections.foreach(_.pause)
+  }
+
+  def resume() {
+    connections.foreach(_.unPause)
+  }
 }
 
 object Queue {

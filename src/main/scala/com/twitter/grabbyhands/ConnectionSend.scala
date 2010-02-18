@@ -31,14 +31,13 @@ protected class ConnectionSend(
                          server) {
   protected val sendQueue = queue.sendQueue
 
-  protected val newlineBuffer = ByteBuffer.wrap("\r\n".getBytes)
   protected var requestLength = 0
   protected val requests = new Array[ByteBuffer](5)
   requests.update(0, ByteBuffer.wrap(("set " + queueName + " 0 0 ").getBytes))
   // 1 set to each length
-  requests.update(2, newlineBuffer)
+  requests.update(2, ByteBuffer.wrap("\r\n".getBytes))
   // 3 set to each payload
-  requests.update(4, newlineBuffer)
+  requests.update(4, ByteBuffer.wrap("\r\n".getBytes))
   protected val staticLength = {
     var rv = 0
     requests.foreach(buffer => if (buffer != null) rv += buffer.capacity)
@@ -56,17 +55,23 @@ protected class ConnectionSend(
       if (haltLatch.getCount == 0) {
         return false
       }
-      write = sendQueue.poll(1, TimeUnit.SECONDS)
-      if (write != null) {
+      // Keep wait here symmetrical with recv side so pause is consistent
+      write = sendQueue.poll(grabbyHands.config.kestrelReadTimeoutMs, TimeUnit.MILLISECONDS)
+      if (write == null) {
+        return true
+      } else {
         // Don't redo this work when retrying same message
+        requests(0).rewind()
         requests(1) = ByteBuffer.wrap(Integer.toString(write.message.limit).getBytes)
+        requests(2).rewind()
         requests(3) = write.message
+        requests(4).rewind()
         requestLength = staticLength + requests(1).capacity + requests(3).capacity
       }
     }
-    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " message to send")
 
     if (write.cancel.getCount == 0) {
+      queueCounters.sendCancelled.incrementAndGet()
       log.finer(connectionName + " write canceled")
       return true
     }

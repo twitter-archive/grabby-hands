@@ -28,15 +28,21 @@ object PositiveSpec extends SpecBase {
     sb.toString
   }
 
-  def genBinaryString(length: Int): String = {
-    val sb = new StringBuffer()
-    for (idx <- 1 to length) {
-      sb.append(idx.asInstanceOf[Char])
+  def genBinaryArray(length: Int): Array[Byte] = {
+    val rv = new Array[Byte](length)
+    for (idx <- 0 to length - 1) {
+      rv(idx) = idx.asInstanceOf[Byte]
     }
-    sb.toString
+    rv
   }
 
   "positive" should {
+
+    doFirst {
+      // Delete queue before starting connections, which will recreate queue.
+      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
+      adhoc.deleteQueue(queue)
+    }
 
     doBefore {
       defaults()
@@ -51,10 +57,6 @@ object PositiveSpec extends SpecBase {
     }
 
     "write one, read one" in {
-      // Delete queue before starting connections, which will recreate queue.
-      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
-      adhoc.deleteQueue(queue)
-
       ctor()
       grab must notBeNull
       val send = grab.getSendQueue(queue)
@@ -65,11 +67,9 @@ object PositiveSpec extends SpecBase {
       write.written.getCount() must be_==(1)
       write.cancel.getCount() must be_==(1)
 
-      log.fine("before write")
       send.put(write)
 
-      log.fine("before read")
-      val buffer = recv.poll(1, TimeUnit.SECONDS)
+      val buffer = recv.poll(2, TimeUnit.SECONDS)
       buffer must notBeNull
 
       val recvText = new String(buffer.array)
@@ -94,12 +94,17 @@ object PositiveSpec extends SpecBase {
       queueCount.messagesRecv.get must be_==(1)
       queueCount.bytesRecv.get must be_==(sendText.length)
       queueCount.kestrelGetTimeouts.get must be_==(0)
-    }
+   }
 
     "connection counters" in {
       ctor()
       grab must notBeNull
       val serverCount = grab.serverCounters(hostPort)
+      var retries = 20
+      while (retries > 0 && serverCount.connectionOpenAttempt.get != 2) {
+        retries -= 1
+        Thread.sleep(25)
+      }
       serverCount.connectionOpenAttempt.get must be_==(2) // One for each direction
       serverCount.connectionOpenSuccess.get must be_==(2)
       serverCount.connectionOpenTimeout.get must be_==(0)
@@ -139,13 +144,35 @@ object PositiveSpec extends SpecBase {
       queueCount.protocolError.get must be_==(0)
     }
 
-    "messages of varying length" in {
-      fail("XXX")
+    "messages of varying length beyond internal queue depth" in {
+      ctor()
+      val maxLen = 25
+      maxLen must be_>=(config.queues(queue).getSendQueueDepth)
+      val save = new Array[String](maxLen + 1)
+      for (length <- 1 to maxLen) {
+        log.warning("XXX length= " + length)
+        val sendText = genAsciiString(length)
+        sendText.length must be_==(length)
+        save(length) = sendText
+        grab.getSendQueue(queue).put(new Write(sendText))
+      }
+      for (length <- 1 to maxLen) {
+        val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
+        buffer must notBeNull
+        val recvText = new String(buffer.array)
+        recvText must be_==(save(length))
+      }
     }
 
-    "messages with reserved characters" in {
+    "messages with reserved tokens" in {
       // newlines, END\r\n, VALUE, etc.
-      fail("XXX")
+      ctor()
+      val sendText = "\r\n\n\n\r\rEND\r\nVALUE\r\n"
+      grab.getSendQueue(queue).put(new Write(sendText))
+      val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
+      buffer must notBeNull
+      val recvText = new String(buffer.array)
+      recvText must be_==(sendText)
     }
 
     "message up to length limit" in {
@@ -153,7 +180,7 @@ object PositiveSpec extends SpecBase {
       val sendText = genAsciiString(shortMessageMax)
       sendText.length must be_==(shortMessageMax)
       grab.getSendQueue(queue).put(new Write(sendText))
-      val buffer = grab.getRecvQueue(queue).poll(1, TimeUnit.SECONDS)
+      val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
       buffer must notBeNull
       val recvText = new String(buffer.array)
       recvText must be_==(sendText)
@@ -161,15 +188,18 @@ object PositiveSpec extends SpecBase {
 
     "huge message" in {
       config.maxMessageBytes = 524288
-//      config.maxMessageBytes = 68000
       ctor()
       val sendText = genAsciiString(config.maxMessageBytes)
       sendText.length must be_==(config.maxMessageBytes)
       grab.getSendQueue(queue).put(new Write(sendText))
-      val buffer = grab.getRecvQueue(queue).poll(10, TimeUnit.SECONDS)
+      val buffer = grab.getRecvQueue(queue).poll(12, TimeUnit.SECONDS)
       buffer must notBeNull
       val recvText = new String(buffer.array)
       recvText.equals(sendText) must be_==(true)
+      noDetailedDiffs()  // else large string compare goes berzerk
+      recvText must be_==(sendText)
+      detailedDiffs()
+
 
       val queueCount = grab.queueCounters(queue)
       queueCount.protocolError.get must be_==(0)
@@ -181,22 +211,154 @@ object PositiveSpec extends SpecBase {
     }
 
     "binary messages" in {
+      val len = 256 * 2
+      config.maxMessageBytes = len
       ctor()
-      fail("XXX")
+      val sendArray = genBinaryArray(len)
+      sendArray.length must be_==(len)
+      grab.getSendQueue(queue).put(new Write(sendArray))
+      val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
+      buffer must notBeNull
+      buffer.position must be_==(0)
+      buffer.capacity must be_==(len)
+      buffer.limit must be_==(len)
+      for (idx <- 0 to len - 1) {
+        buffer.get must be_==(sendArray(idx))
+      }
+
+      val queueCount = grab.queueCounters(queue)
+      queueCount.protocolError.get must be_==(0)
+      queueCount.messagesSent.get must be_==(1)
+      queueCount.bytesSent.get must be_==(len)
+      queueCount.messagesRecv.get must be_==(1)
+      queueCount.bytesRecv.get must be_==(len)
+      queueCount.kestrelGetTimeouts.get must be_==(0)
     }
 
-    "utf-8 messages" in {
+    "pause and resume" in {
+      // Speed up test
+      config.kestrelReadTimeoutMs = config.kestrelReadTimeoutMs >> 4
+      config.readTimeoutMs = config.readTimeoutMs >> 4
+
       ctor()
-      fail("XXX")
+      val queueCount = grab.queueCounters(queue)
+      grab.pause()
+      grab.counters.pausedThreads.get must be_==(2)
+      val idled = queueCount.kestrelGetTimeouts.get
+      // Verify that thread is indeed paused.
+      Thread.sleep(config.kestrelReadTimeoutMs + config.readTimeoutMs)
+      queueCount.kestrelGetTimeouts.get must be_==(idled)
+      grab.resume()
+
+      var retries = 10
+      while (retries > 0 && grab.counters.pausedThreads.get != 0) {
+        retries -= 1
+        Thread.sleep(25)
+      }
+      grab.counters.pausedThreads.get must be_==(0)
+
+      // Validate that things basically work after a pause.
+      val sendText = "text"
+      grab.getSendQueue(queue).put(new Write(sendText))
+      val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
+      buffer must notBeNull
+      val recvText = new String(buffer.array)
+      recvText must be_==(sendText)
+
+      grab.counters.pausedThreads.get must be_==(0)
     }
 
-    "send two, receive two" in {
+    "deep internal queues" in {
+      val depth = 20
+      config = Config.factory(Array(host + ":" + port))
+      config.maxMessageBytes = shortMessageMax
+      config.sendQueueDepth = depth
+      config.recvQueueDepth = depth
+      config.addQueue(queues(0))
       ctor()
-      fail("XXX")
+
+      grab.pause()
+      grab.counters.pausedThreads.get must be_==(2)
+      val send = grab.getSendQueue(queue)
+      send.remainingCapacity must be_==(depth)
+      val recv = grab.getRecvQueue(queue)
+      recv.remainingCapacity must be_==(depth)
+
+      val text = new Array[String](depth + 1)
+      val writes = new Array[Write](depth + 1)
+      for (idx <- 1 to depth) {
+        text(idx) = "text" + idx
+        writes(idx) = new Write(text(idx))
+        send.remainingCapacity() must be_==(1 + depth - idx)
+        send.put(writes(idx))
+      }
+      send.remainingCapacity must be_==(0)
+      recv.remainingCapacity must be_==(depth)
+
+      for (idx <- 1 to depth) {
+        writes(idx).written.getCount must be_==(1)
+      }
+      grab.resume()
+
+      var retries = 100
+      while (retries > 0 && recv.remainingCapacity != 0) {
+        retries -= 1
+        Thread.sleep(25)
+      }
+      recv.remainingCapacity must be_==(0)
+      grab.counters.pausedThreads.get must be_==(0)
+
+      for (idx <- 1 to depth) {
+        val buffer = recv.poll()
+        buffer must notBeNull
+        new String(buffer.array) must be_==(text(idx))
+        writes(idx).written.getCount must be_==(0)
+      }
     }
 
     "cancel a message" in {
-      fail("XXX")
+      ctor()
+
+      grab.pause()
+      grab.counters.pausedThreads.get must be_==(2)
+
+      val send = grab.getSendQueue(queue)
+      val recv = grab.getRecvQueue(queue)
+      val recvCapacity = recv.remainingCapacity
+      val sendCapacity = recv.remainingCapacity
+
+      val text = "text"
+      val write = new Write(text)
+      send.put(write)
+      send.remainingCapacity must be_==(sendCapacity - 1)
+
+      Thread.sleep(100)
+      write.written.getCount must be_==(0)
+      write.cancel.getCount must be_==(1)
+      write.cancel.countDown()
+
+      Thread.sleep(100)
+      write.written.getCount must be_==(0)
+
+      grab.resume()
+      var retries = 10
+      while (retries > 0 && grab.counters.pausedThreads.get != 0) {
+        retries -= 1
+        Thread.sleep(25)
+      }
+      grab.counters.pausedThreads.get must be_==(0)
+
+      // Sleep more to ensure that nothing leaks through
+      Thread.sleep(250)
+
+      recv.remainingCapacity must be_==(recvCapacity)
+      val queueCount = grab.queueCounters(queue)
+      queueCount.protocolError.get must be_==(0)
+      queueCount.messagesSent.get must be_==(1)
+      queueCount.bytesSent.get must be_==(text.length)
+      queueCount.messagesRecv.get must be_==(0)
+      queueCount.bytesRecv.get must be_==(0)
+      queueCount.sendCancelled.get must be_==(1)
     }
   }
 }
