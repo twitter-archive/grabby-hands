@@ -30,7 +30,7 @@ class Write(val message: ByteBuffer) {
   }
 
   protected[grabbyhands] def write() {
-    cancelLatch.countDown()
+    writtenLatch.countDown()
   }
 
   def cancel() {

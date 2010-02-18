@@ -37,14 +37,10 @@ object PositiveSpec extends SpecBase {
   }
 
   "positive" should {
-
-    doFirst {
-      // Delete queue before starting connections, which will recreate queue.
+    doBefore {
       val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
       adhoc.deleteQueue(queue)
-    }
 
-    doBefore {
       defaults()
       grab = null
     }
@@ -150,7 +146,6 @@ object PositiveSpec extends SpecBase {
       maxLen must be_>=(config.queues(queue).getSendQueueDepth)
       val save = new Array[String](maxLen + 1)
       for (length <- 1 to maxLen) {
-        log.warning("XXX length= " + length)
         val sendText = genAsciiString(length)
         sendText.length must be_==(length)
         save(length) = sendText
