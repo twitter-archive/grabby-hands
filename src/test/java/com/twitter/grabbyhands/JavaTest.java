@@ -41,62 +41,49 @@ public class JavaTest {
         System.out.println("run testCreate");
 
         Config config = new Config(servers);
-        HashMap<String, ConfigQueue> queueConfigs = config.addQueues(queues);
-        System.out.println("1");
-        assert(queueConfigs.containsKey(queues.get(0)));
 
         config.setRecvNumConnections(4);
         config.setSendNumConnections(5);
-        System.out.println("2");
         assert(config.recvNumConnections() == 4);
         assert(config.getRecvNumConnections() == 4);
-        System.out.println("2a");
         assert(config.sendNumConnections() == 5);
         assert(config.getSendNumConnections() == 5);
 
         config.setMaxMessageBytes(100);
-        System.out.println("2z");
         assert(config.getMaxMessageBytes() == 100);
 
+        HashMap<String, ConfigQueue> queueConfigs = config.addQueues(queues);
+        assert(queueConfigs.containsKey(queues.get(0)));
         ConfigQueue configQueue = queueConfigs.get(queues.get(0));
-        System.out.println("3");
         assert(configQueue.recvNumConnections() == 4);
-        System.out.println("3a");
         assert(configQueue.getRecvNumConnections() == 4);
 
-        System.out.println("4");
         assert(configQueue.recvQueueDepth() == 4);
         assert(configQueue.getRecvQueueDepth() == 4);
 
-        System.out.println("5");
         assert(configQueue.sendNumConnections() == 5);
         assert(configQueue.getSendNumConnections() == 5);
 
-        System.out.println("6");
         assert(configQueue.sendQueueDepth() == 5);
         assert(configQueue.getSendQueueDepth() == 5);
 
-        GrabbyHands grabbyHands = new GrabbyHands(config);
         System.out.println("pass testCreate");
     }
 
     protected void testWriteRead() {
-        System.out.println("rw 1");
         Config config = new Config(servers);
         config.addQueues(queues);
         GrabbyHands grabbyHands = new GrabbyHands(config);
         BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
         BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
-        System.out.println("rw 2");
 
         String sendText = "text";
         Write write = new Write(sendText);
         assert(!write.written());
         assert(!write.cancelled());
-        System.out.println("rw 3");
         try {
             send.put(write);
-            ByteBuffer buffer = recv.poll(2, TimeUnit.SECONDS);
+            ByteBuffer buffer = recv.poll(4, TimeUnit.SECONDS);
             assert(buffer != null);
 
             String recvText = new String(buffer.array());
