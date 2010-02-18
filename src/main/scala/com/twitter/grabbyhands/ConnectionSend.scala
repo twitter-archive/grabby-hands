@@ -70,8 +70,9 @@ protected class ConnectionSend(
       }
     }
 
-    if (write.cancel.getCount == 0) {
+    if (write.cancelled) {
       queueCounters.sendCancelled.incrementAndGet()
+      write = null // Do not retry
       log.finer(connectionName + " write canceled")
       return true
     }
@@ -102,7 +103,7 @@ protected class ConnectionSend(
     serverCounters.messagesSent.incrementAndGet()
     queueCounters.bytesSent.addAndGet(write.message.capacity)
     serverCounters.bytesSent.addAndGet(write.message.capacity)
-    write.written.countDown()
+    write.write
     write = null // Message sent, do not retry
     if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " wrote ok " + requestLength)
     true

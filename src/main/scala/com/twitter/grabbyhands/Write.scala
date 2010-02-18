@@ -19,10 +19,26 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.{CountDownLatch}
 
-// Note: ByteBuffer.wrap(some_string.getBytes())
 class Write(val message: ByteBuffer) {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes))
-  val written = new CountDownLatch(1)
-  val cancel = new CountDownLatch(1)
+  protected val writtenLatch = new CountDownLatch(1)
+  protected val cancelLatch = new CountDownLatch(1)
+
+  def written(): Boolean = {
+    writtenLatch.getCount == 0
+  }
+
+  protected[grabbyhands] def write() {
+    cancelLatch.countDown()
+  }
+
+  def cancel() {
+    cancelLatch.countDown()
+  }
+
+  def cancelled(): Boolean = {
+    cancelLatch.getCount == 0
+  }
+
 }

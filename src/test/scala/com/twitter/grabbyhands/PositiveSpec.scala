@@ -64,8 +64,8 @@ object PositiveSpec extends SpecBase {
 
       val sendText = "text"
       val write = new Write(sendText)
-      write.written.getCount() must be_==(1)
-      write.cancel.getCount() must be_==(1)
+      write.written must beFalse
+      write.cancelled must beFalse
 
       send.put(write)
 
@@ -75,8 +75,8 @@ object PositiveSpec extends SpecBase {
       val recvText = new String(buffer.array)
       recvText must be_==(sendText)
 
-      write.written.getCount() must be_==(0)
-      write.cancel.getCount() must be_==(1)
+      write.written must beTrue
+      write.cancelled must beFalse
 
       val serverCount = grab.serverCounters(hostPort)
       serverCount.protocolError.get must be_==(0)
@@ -296,7 +296,7 @@ object PositiveSpec extends SpecBase {
       recv.remainingCapacity must be_==(depth)
 
       for (idx <- 1 to depth) {
-        writes(idx).written.getCount must be_==(1)
+        writes(idx).written must beFalse
       }
       grab.resume()
 
@@ -312,7 +312,7 @@ object PositiveSpec extends SpecBase {
         val buffer = recv.poll()
         buffer must notBeNull
         new String(buffer.array) must be_==(text(idx))
-        writes(idx).written.getCount must be_==(0)
+        writes(idx).written must beTrue
       }
     }
 
@@ -325,7 +325,9 @@ object PositiveSpec extends SpecBase {
       val send = grab.getSendQueue(queue)
       val recv = grab.getRecvQueue(queue)
       val recvCapacity = recv.remainingCapacity
-      val sendCapacity = recv.remainingCapacity
+      recvCapacity must be_>(0)
+      val sendCapacity = send.remainingCapacity
+      sendCapacity must be_>(0)
 
       val text = "text"
       val write = new Write(text)
@@ -333,12 +335,14 @@ object PositiveSpec extends SpecBase {
       send.remainingCapacity must be_==(sendCapacity - 1)
 
       Thread.sleep(100)
-      write.written.getCount must be_==(0)
-      write.cancel.getCount must be_==(1)
-      write.cancel.countDown()
+      write.written must beFalse
+      write.cancelled must beFalse
+      write.cancel
+      write.cancelled must beTrue
 
       Thread.sleep(100)
-      write.written.getCount must be_==(0)
+      write.written must beFalse
+      write.cancelled must beTrue
 
       grab.resume()
       var retries = 10
@@ -354,11 +358,14 @@ object PositiveSpec extends SpecBase {
       recv.remainingCapacity must be_==(recvCapacity)
       val queueCount = grab.queueCounters(queue)
       queueCount.protocolError.get must be_==(0)
-      queueCount.messagesSent.get must be_==(1)
-      queueCount.bytesSent.get must be_==(text.length)
+      queueCount.messagesSent.get must be_==(0)
+      queueCount.bytesSent.get must be_==(0)
       queueCount.messagesRecv.get must be_==(0)
       queueCount.bytesRecv.get must be_==(0)
       queueCount.sendCancelled.get must be_==(1)
+
+      write.written must beFalse
+      write.cancelled must beTrue
     }
   }
 }

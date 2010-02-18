@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- CONFIG: change example and description to fit your project -->
 <project name="grabbyhands" default="package" xmlns:ivy="antlib:org.apache.ivy.ant">
-  <description>A read-only JVM Kestrel client</description>
+  <description>A JVM Kestrel client for servers reading from large Kestrel clusters</description>
 
   <!-- use the git revision for the tarball name, instead of the version number: -->
   <property name="dist.build_integration" value="true" />
