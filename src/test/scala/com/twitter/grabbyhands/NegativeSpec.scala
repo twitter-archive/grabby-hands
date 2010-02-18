@@ -34,7 +34,7 @@ object NegativeSpec extends SpecBase {
       }
     }
 
-    "don't messages beyond expected limit" in {
+    "don't send messages beyond expected limit" in {
       ctor()
       fail("XXX")
     }
