@@ -37,6 +37,31 @@ object NegativeSpec extends SpecBase {
       }
     }
 
+    "tolerate down kestrel" in {
+      // assume that nothing is running on (default kestrel port + 10)
+      val badServer = host + ":" + (port + 10)
+      config = Config.factory(Array(badServer))
+      config.connectTimeoutMs = 200
+      config.addQueue(queue)
+
+      ctor()
+
+      // Assume reconnect holddown will prevent more than one connect attempt
+      config.reconnectHolddownMs must be_>(config.connectTimeoutMs * 2)
+      Thread.sleep(config.connectTimeoutMs + 50)
+
+      val serverCount = grab.serverCounters(badServer)
+      serverCount.connectionOpenAttempt.get must be_==(2) // One for each direction
+      serverCount.connectionOpenSuccess.get must be_==(0)
+      serverCount.connectionOpenTimeout.get must be_==(0)
+      serverCount.connectionCurrent.get must be_==(0)
+      serverCount.connectionExceptions.get must be_==(2)
+    }
+
+    "make progress with only one up kestrel" in {
+      fail("XXX")
+    }
+
     "recover from receiving messages beyond expected length" in {
       config.maxMessageBytes = 20
       ctor()

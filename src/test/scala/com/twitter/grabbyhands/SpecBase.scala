@@ -35,7 +35,7 @@ class SpecBase extends Specification {
   def defaults(): Config = {
     config = Config.factory(Array(host + ":" + port))
     config.maxMessageBytes = shortMessageMax
-    config.addQueue(queues(0))
+    config.addQueue(queue)
     config
   }
 

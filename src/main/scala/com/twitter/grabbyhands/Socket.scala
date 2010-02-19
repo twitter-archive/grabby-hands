@@ -25,6 +25,7 @@ import java.util.logging.{Level, Logger}
 trait Socket {
   val log = Logger.getLogger(GrabbyHands.logname)
   var socket: SocketChannel = _
+  var opened = false
   //XXX See if we can go back to two selectors
   //  var readSelector: Selector = _
   //  var writeSelector: Selector = _
@@ -35,8 +36,10 @@ trait Socket {
   var connectTimeoutMs = Config.defaultConnectTimeoutMs
   var readTimeoutMs = Config.defaultReadTimeoutMs
   var writeTimeoutMs = Config.defaultWriteTimeoutMs
+  var reconnectHolddownMs = Config.defaultReconnectHolddownMs
 
-  def open() {
+  protected def open() {
+    log.finer(socketName + " open socket start")
     serverCounters.connectionOpenAttempt.incrementAndGet()
     socket = SocketChannel.open()
     socket.configureBlocking(false)
@@ -45,17 +48,20 @@ trait Socket {
     socket.connect(new InetSocketAddress(hostPort(0), Integer.parseInt(hostPort(1))))
     val connectSelector = Selector.open()
     socket.register(connectSelector, SelectionKey.OP_CONNECT)
-    serverCounters.connectionCurrent.incrementAndGet()
 
     if (connectSelector.select(connectTimeoutMs) == 0 || !socket.finishConnect()) {
+      log.warning(socketName + " open socket timeout")
       connectSelector.close()
       socket.close()
       serverCounters.connectionOpenTimeout.incrementAndGet()
-      throw new Exception("connect timeout " + server)
+      throw new Exception("connect socket timeout " + server)
     }
     connectSelector.close()
     readWriteSelector = Selector.open()
     serverCounters.connectionOpenSuccess.incrementAndGet()
+    opened = true
+    serverCounters.connectionCurrent.incrementAndGet()
+    log.finer(socketName + " open socket success")
   }
 
   def openBlock() {
@@ -70,7 +76,13 @@ trait Socket {
         open()
         connected = true
       } catch {
-        case ex:Exception => null
+        case ex:Exception => {
+          close()
+          log.finer(socketName + " exception on open " + ex.toString + " holddown sleepMs " +
+                    reconnectHolddownMs)
+          serverCounters.connectionExceptions.incrementAndGet()
+          Thread.sleep(reconnectHolddownMs)
+        }
       }
     }
   }
@@ -116,10 +128,15 @@ trait Socket {
     //    if (writeSelector != null) writeSelector.close()
     if (readWriteSelector != null) {
       readWriteSelector.close()
+      readWriteSelector = null
     }
     if (socket != null) {
-      serverCounters.connectionCurrent.decrementAndGet()
+      if (opened) {
+        serverCounters.connectionCurrent.decrementAndGet()
+        opened = false
+      }
       socket.close()
+      socket = null
     }
   }
 }

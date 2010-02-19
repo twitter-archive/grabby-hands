@@ -29,12 +29,16 @@ protected abstract class ConnectionBase(queue: Queue,
   val config = queue.config
   val queueCounters = queue.counters
   val queueName = config.name
+
   server = serverArg
   socketName = connectionName
+
   serverCounters = grabbyHands.serverCounters(server)
   connectTimeoutMs = grabbyHands.config.connectTimeoutMs
   readTimeoutMs = grabbyHands.config.readTimeoutMs
   writeTimeoutMs = grabbyHands.config.writeTimeoutMs
+  reconnectHolddownMs = grabbyHands.config.reconnectHolddownMs
+
   protected val haltLatch = new CountDownLatch(1)
   protected val startedLatch = new CountDownLatch(1)
   protected val paused = new AtomicBoolean(false)
