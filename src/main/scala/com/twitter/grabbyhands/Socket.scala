@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.logging.{Level, Logger}
 
 trait Socket {
-  val log = Logger.getLogger("grabbyhands")
+  val log = Logger.getLogger(GrabbyHands.logname)
   var socket: SocketChannel = _
   //XXX See if we can go back to two selectors
   //  var readSelector: Selector = _

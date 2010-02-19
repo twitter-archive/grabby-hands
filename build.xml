@@ -32,6 +32,7 @@
        <jvmarg value="-Xmx1200m" />
        <jvmarg value="-ea" />
        <jvmarg value="-esa" />
+       <jvmarg value="-Djava.util.logging.config.file=logging.properties" />
       </java>
   </target>
 

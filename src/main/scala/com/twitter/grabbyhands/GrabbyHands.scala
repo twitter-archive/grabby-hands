@@ -22,7 +22,7 @@ import java.util.logging.Logger
 import scala.collection.mutable.HashMap
 
 class GrabbyHands(val config: Config) {
-  protected[grabbyhands] val log = Logger.getLogger("grabbyhands")
+  protected[grabbyhands] val log = Logger.getLogger(GrabbyHands.logname)
 
   val counters = new Counters()
   val serverCounters: Map[String, ServerCounters] = {
@@ -78,4 +78,8 @@ class GrabbyHands(val config: Config) {
     queues.values.foreach(_.resume)
     log.fine("grabbyhands resume end")
   }
+}
+
+object GrabbyHands {
+  val logname = "com.twitter.grabbyhands"
 }

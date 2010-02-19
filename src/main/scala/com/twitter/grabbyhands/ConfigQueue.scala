@@ -19,7 +19,7 @@ package com.twitter.grabbyhands
 import java.util.logging.Logger
 
 class ConfigQueue(val name: String, config: Config) extends ConfigConnection(config) {
-  protected val log = Logger.getLogger("com.twitter.grabbyhands")
+  protected val log = Logger.getLogger(GrabbyHands.logname)
 
   def record() = log.config(toString)
 

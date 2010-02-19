@@ -33,6 +33,7 @@
         <jvmarg value="-Ddist.dir=${dist.dir}" />
         <jvmarg value="-Djava.library.path=${dist.dir}:${dist.dir}/libs" />
         <jvmarg value="-Xmx1200m" />
+        <jvmarg value="-Djava.util.logging.config.file=logging.properties" />
         <arg value="@{classname}" />
       </java>
     </sequential>

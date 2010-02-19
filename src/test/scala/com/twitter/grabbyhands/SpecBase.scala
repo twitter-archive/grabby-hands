@@ -19,13 +19,7 @@ import java.util.logging.{FileHandler,Level,Logger,SimpleFormatter}
 import org.specs.Specification
 
 class SpecBase extends Specification {
-  val log = Logger.getLogger("grabbyhands")
-  val handler = new FileHandler("grabbyhands.log", true)
-  handler.setFormatter(new SimpleFormatter())
-  handler.setLevel(Level.ALL)
-  log.setLevel(Level.ALL)
-  log.addHandler(handler)
-
+  val log = Logger.getLogger(GrabbyHands.logname)
   var grab: GrabbyHands = _
   var config: Config = _
   val queues = Array("grabby_test1", "grabby_test2", "grabby_test3")

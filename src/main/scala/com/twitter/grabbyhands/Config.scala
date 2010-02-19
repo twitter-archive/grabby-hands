@@ -21,7 +21,7 @@ import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.reflect.BeanProperty
 
 class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigConnection {
-  protected val log = Logger.getLogger("com.twitter.grabbyhands")
+  protected val log = Logger.getLogger(GrabbyHands.logname)
   protected[grabbyhands] val queues = new HashMap[String, ConfigQueue]()
   val configConnection = new ConfigConnection()
 
