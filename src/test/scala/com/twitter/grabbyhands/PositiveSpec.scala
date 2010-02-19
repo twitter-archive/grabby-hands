@@ -346,5 +346,29 @@ object PositiveSpec extends SpecBase {
       write.written must beFalse
       write.cancelled must beTrue
     }
+
+    "support multiple queues" in {
+      val num = 5
+      num must be_<=(queues.size)
+      for (idx <- 1 to num - 1) {
+        config.addQueue(queues(idx))
+      }
+      ctor()
+
+      val sendText = new Array[String](num)
+      val recvText = new Array[String](num)
+      val buffer = new Array[ByteBuffer](num)
+      for (idx <- 1 to num - 1) {
+        sendText(idx) = "text" + idx
+        grab.getSendQueue(queues(idx)).put(new Write(sendText(idx)))
+      }
+
+      for (idx <- 1 to num - 1) {
+        buffer(idx) = grab.getRecvQueue(queues(idx)).poll(2, TimeUnit.SECONDS)
+        buffer(idx) must notBeNull
+        recvText(idx) = new String(buffer(idx).array)
+        recvText(idx) must be_==(sendText(idx))
+      }
+    }
   }
 }
