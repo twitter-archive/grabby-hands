@@ -19,6 +19,7 @@
     <dependency org="org.scala-tools.testing" name="specs" rev="1.6.1" conf="test->*" />
     <dependency org="org.scala-tools" name="vscaladoc" rev="1.1-md-3" conf="bootstrap->*" />
 
-    <dependency org="com.twitter" name="xrayspecs" rev="1.0.7" conf="*" /> <!--auto-->
+    <dependency org="junit" name="junit" rev="4.7" />
+
   </dependencies>
 </ivy-module>

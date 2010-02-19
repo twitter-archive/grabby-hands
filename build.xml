@@ -18,11 +18,12 @@
   </target>
 
   <target name="javatest" depends="compile-tests">
-    <java classname="com.twitter.grabbyhands.JavaTest" fork="true" failonerror="true">
+    <java classname="org.junit.runner.JUnitCore" fork="true" failonerror="true">
        <classpath>
          <path refid="test.path" />
          <pathelement location="${target.dir}/classes" />
          <pathelement location="${target.dir}/test-classes" />
+         <pathelement location="${target.dir}/libs/default" />
        </classpath>
        <syspropertyset>
          <propertyref builtin="all" />
@@ -33,6 +34,7 @@
        <jvmarg value="-ea" />
        <jvmarg value="-esa" />
        <jvmarg value="-Djava.util.logging.config.file=logging.properties" />
+       <arg value="com.twitter.grabbyhands.JavaTest" />
       </java>
   </target>
 

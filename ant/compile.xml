@@ -74,7 +74,7 @@
   <!-- compile old-skool java -->
 
   <target name="compile-java" if="build.java">
-    <javac srcdir="${source.dir}/java" destdir="${target.dir}/classes" deprecation="on">
+    <javac srcdir="${source.dir}/java" destdir="${target.dir}/classes" deprecation="on" debug="true" debuglevel="lines,source">
       <classpath>
         <path refid="deps.path" />
       </classpath>

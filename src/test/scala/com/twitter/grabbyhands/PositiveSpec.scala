@@ -90,7 +90,7 @@ object PositiveSpec extends SpecBase {
       queueCount.messagesRecv.get must be_==(1)
       queueCount.bytesRecv.get must be_==(sendText.length)
       queueCount.kestrelGetTimeouts.get must be_==(0)
-   }
+    }
 
     "connection counters" in {
       ctor()

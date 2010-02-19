@@ -22,82 +22,65 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.List;
+import static org.junit.Assert.*;
+import org.junit.Test;
 
 public class JavaTest {
-    public JavaTest() {
-        System.out.println("java test");
+  protected List<String> servers = Arrays.asList("localhost:22133");
+  protected String queue = "grabby_javatest";
+  protected List<String> queues = Arrays.asList(queue);
+
+  @Test public void testCreate() {
+    Config config = new Config(servers);
+
+    config.setRecvNumConnections(4);
+    config.setSendNumConnections(5);
+    assertEquals(config.recvNumConnections(), 4);
+    assertEquals(config.getRecvNumConnections(), 4);
+    assertEquals(config.sendNumConnections(), 5);
+    assertEquals(config.getSendNumConnections(), 5);
+
+    config.setMaxMessageBytes(100);
+    assertEquals(config.getMaxMessageBytes(), 100);
+
+    HashMap<String, ConfigQueue> queueConfigs = config.addQueues(queues);
+    assertTrue(queueConfigs.containsKey(queues.get(0)));
+    ConfigQueue configQueue = queueConfigs.get(queues.get(0));
+    assertEquals(configQueue.recvNumConnections(), 4);
+    assertEquals(configQueue.getRecvNumConnections(), 4);
+
+    assertEquals(configQueue.recvQueueDepth(), 4);
+    assertEquals(configQueue.getRecvQueueDepth(), 4);
+
+    assertEquals(configQueue.sendNumConnections(), 5);
+    assertEquals(configQueue.getSendNumConnections(), 5);
+
+    assertEquals(configQueue.sendQueueDepth(), 5);
+    assertEquals(configQueue.getSendQueueDepth(), 5);
+  }
+
+  @Test public void testWriteRead() {
+    Config config = new Config(servers);
+    config.addQueues(queues);
+    GrabbyHands grabbyHands = new GrabbyHands(config);
+    BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
+    BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
+
+    String sendText = "text";
+    Write write = new Write(sendText);
+    assertFalse(write.written());
+    assertFalse(write.cancelled());
+    try {
+      send.put(write);
+      ByteBuffer buffer = recv.poll(4, TimeUnit.SECONDS);
+      assertNotNull(buffer);
+
+      String recvText = new String(buffer.array());
+      assertEquals(recvText, sendText);
+
+      assertTrue(write.written());
+    } catch (InterruptedException e) {
+      fail("caught unexpected exception");
     }
-
-    protected List<String> servers = Arrays.asList("localhost:22133");
-    protected String queue = "grabby_javatest";
-    protected List<String> queues = Arrays.asList(queue);
-
-    public void run() {
-        testCreate();
-        testWriteRead();
-    }
-
-    protected void testCreate() {
-        System.out.println("run testCreate");
-
-        Config config = new Config(servers);
-
-        config.setRecvNumConnections(4);
-        config.setSendNumConnections(5);
-        assert(config.recvNumConnections() == 4);
-        assert(config.getRecvNumConnections() == 4);
-        assert(config.sendNumConnections() == 5);
-        assert(config.getSendNumConnections() == 5);
-
-        config.setMaxMessageBytes(100);
-        assert(config.getMaxMessageBytes() == 100);
-
-        HashMap<String, ConfigQueue> queueConfigs = config.addQueues(queues);
-        assert(queueConfigs.containsKey(queues.get(0)));
-        ConfigQueue configQueue = queueConfigs.get(queues.get(0));
-        assert(configQueue.recvNumConnections() == 4);
-        assert(configQueue.getRecvNumConnections() == 4);
-
-        assert(configQueue.recvQueueDepth() == 4);
-        assert(configQueue.getRecvQueueDepth() == 4);
-
-        assert(configQueue.sendNumConnections() == 5);
-        assert(configQueue.getSendNumConnections() == 5);
-
-        assert(configQueue.sendQueueDepth() == 5);
-        assert(configQueue.getSendQueueDepth() == 5);
-
-        System.out.println("pass testCreate");
-    }
-
-    protected void testWriteRead() {
-        Config config = new Config(servers);
-        config.addQueues(queues);
-        GrabbyHands grabbyHands = new GrabbyHands(config);
-        BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
-        BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
-
-        String sendText = "text";
-        Write write = new Write(sendText);
-        assert(!write.written());
-        assert(!write.cancelled());
-        try {
-            send.put(write);
-            ByteBuffer buffer = recv.poll(4, TimeUnit.SECONDS);
-            assert(buffer != null);
-
-            String recvText = new String(buffer.array());
-            assert(recvText.equals(sendText));
-
-            assert(write.written());
-        } catch (InterruptedException e) {
-            assert(false);
-        }
-        System.out.println("pass testWriteRead");
-    }
-
-    public static void main(String[] args) {
-        JavaTest javaTest = new JavaTest();
-        javaTest.run();
-    }
+  }
 }
