@@ -40,4 +40,20 @@ class SpecBase extends Specification {
     grab = new GrabbyHands(config)
     grab
   }
+
+  def genAsciiString(length: Int): String = {
+    val sb = new StringBuffer()
+    for (idx <- 0 to length - 1) {
+      sb.append(('a' + (idx % ('z' - 'a'))).asInstanceOf[Char])
+    }
+    sb.toString
+  }
+
+  def genBinaryArray(length: Int): Array[Byte] = {
+    val rv = new Array[Byte](length)
+    for (idx <- 0 to length - 1) {
+      rv(idx) = idx.asInstanceOf[Byte]
+    }
+    rv
+  }
 }

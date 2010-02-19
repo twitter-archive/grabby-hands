@@ -34,14 +34,55 @@ object NegativeSpec extends SpecBase {
       }
     }
 
-    "don't send messages beyond expected limit" in {
+    "recover from receiving messages beyond expected length" in {
+      config.maxMessageBytes = 20
       ctor()
-      fail("XXX")
-    }
+      val errorText = genAsciiString(config.maxMessageBytes + 1)
+      errorText.length must be_==(config.maxMessageBytes + 1)
+      grab.getSendQueue(queue).put(new Write(errorText))
 
-    "don't receive messages beyond expected limit" in {
-      fail("XXX")
-    }
+      val serverCount = grab.serverCounters(hostPort)
+      val queueCount = grab.queueCounters(queue)
 
+      var retries = 100
+      while (retries > 0 && queueCount.protocolError.get == 0) {
+        retries -= 1
+        Thread.sleep(25)
+      }
+      queueCount.protocolError.get must be_==(1)
+      queueCount.messagesSent.get must be_==(1)
+      queueCount.bytesSent.get must be_==(errorText.length)
+      queueCount.messagesRecv.get must be_==(0)
+      queueCount.bytesRecv.get must be_==(0)
+
+      serverCount.protocolError.get must be_==(1)
+      serverCount.messagesSent.get must be_==(1)
+      serverCount.bytesSent.get must be_==(errorText.length)
+      serverCount.messagesRecv.get must be_==(0)
+      serverCount.bytesRecv.get must be_==(0)
+
+      // See if we can recover
+      val sendText = genAsciiString(config.maxMessageBytes)
+      sendText.length must be_==(config.maxMessageBytes)
+      grab.getSendQueue(queue).put(new Write(sendText))
+
+      val buffer = grab.getRecvQueue(queue).poll(2, TimeUnit.SECONDS)
+      buffer must notBeNull
+
+      val recvText = new String(buffer.array)
+      recvText must be_==(sendText)
+
+      queueCount.protocolError.get must be_==(1)
+      queueCount.messagesSent.get must be_==(2)
+      queueCount.bytesSent.get must be_==(errorText.length + sendText.length)
+      queueCount.messagesRecv.get must be_==(1)
+      queueCount.bytesRecv.get must be_==(sendText.length)
+
+      serverCount.protocolError.get must be_==(1)
+      serverCount.messagesSent.get must be_==(2)
+      serverCount.bytesSent.get must be_==(errorText.length + sendText.length)
+      serverCount.messagesRecv.get must be_==(1)
+      serverCount.bytesRecv.get must be_==(sendText.length)
+    }
   }
 }

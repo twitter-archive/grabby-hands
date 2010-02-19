@@ -35,7 +35,8 @@ protected class ConnectionRecv(
 
   protected val request = ByteBuffer.wrap((
     "get " + queueName + "/t=" + grabbyHands.config.kestrelReadTimeoutMs + "\r\n").getBytes)
-  val response = ByteBuffer.allocate(grabbyHands.config.maxMessageBytes + 100)
+  protected val maxMessageBytes = grabbyHands.config.maxMessageBytes
+  val response = ByteBuffer.allocate(maxMessageBytes + 100)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
 // XXX is this rewind() needed??
 // XXX is this rewind() needed??
@@ -125,7 +126,7 @@ protected class ConnectionRecv(
     }
 
     if (!response.hasRemaining) {
-      log.fine(connectionName + " protocol error on header reading length")
+      log.warning(connectionName + " protocol error on header reading length")
       serverCounters.protocolError.incrementAndGet()
       queueCounters.protocolError.incrementAndGet()
       return false
@@ -136,6 +137,13 @@ protected class ConnectionRecv(
     val payloadLength = Integer.parseInt(new String(
       response.array, expectHeader.capacity, response.position - (2 + expectHeader.capacity)))
     log.finest(connectionName + " payload length " + payloadLength)
+    if (payloadLength > maxMessageBytes) {
+      log.warning(connectionName + " protocol error on payloadLength=" + payloadLength +
+                  " > maxMessageBytes=" + maxMessageBytes)
+      serverCounters.protocolError.incrementAndGet()
+      queueCounters.protocolError.incrementAndGet()
+      return false
+    }
 
     // Ensure that entire payload plus an expectEnd can be read
     val payloadStart = response.position
@@ -170,7 +178,7 @@ protected class ConnectionRecv(
     response.position(footerStart)
     expectEnd.rewind()
     if (response != expectEnd) {
-      log.fine(connectionName + " protocol error on footer")
+      log.warning(connectionName + " protocol error on footer")
       serverCounters.protocolError.incrementAndGet()
       queueCounters.protocolError.incrementAndGet()
       return false
