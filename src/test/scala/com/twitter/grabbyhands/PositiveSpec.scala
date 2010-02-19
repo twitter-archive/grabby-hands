@@ -23,7 +23,7 @@ object PositiveSpec extends SpecBase {
   "positive" should {
     doBefore {
       val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
-      adhoc.deleteQueue(queue)
+      queues.foreach(queue => adhoc.deleteQueue(queue))
 
       defaults()
       grab = null

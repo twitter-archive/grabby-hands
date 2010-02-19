@@ -6,6 +6,10 @@ object LifecycleSpec extends SpecBase {
   "lifecycle" should {
 
     doBefore {
+      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
+      queues.foreach(queue => adhoc.deleteQueue(queue))
+
+      defaults()
       grab = null
     }
 
