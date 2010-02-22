@@ -1,7 +1,7 @@
 /** Copyright 2010 Twitter, Inc. */
 package com.twitter.grabbyhands
 
-object ConfigSpec extends SpecBase {
+object ConfigSpec extends SpecBase(2) {
 
   "config" should {
 

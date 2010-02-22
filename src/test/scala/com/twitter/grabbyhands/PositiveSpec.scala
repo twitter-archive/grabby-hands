@@ -18,10 +18,11 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
-object PositiveSpec extends SpecBase {
+object PositiveSpec extends SpecBase(2) {
 
   "positive" should {
     doBefore {
+      noDetailedDiffs()  // else large string compare goes berzerk
       val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
       queues.foreach(queue => adhoc.deleteQueue(queue))
 

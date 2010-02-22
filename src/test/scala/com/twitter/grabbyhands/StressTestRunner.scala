@@ -18,8 +18,8 @@ package com.twitter.grabbyhands
 import org.specs.runner.SpecsFileRunner
 import java.util.logging.{Level,Logger}
 
-object TestRunner extends SpecsFileRunner(
-  "src/test/scala/com/twitter/grabbyhands/*Spec.scala",
+object StressTestRunner extends SpecsFileRunner(
+  "src/test/scala/com/twitter/grabbyhands/*SpecStress.scala",
   ".*",
   System.getProperty("system", ".*"),
   System.getProperty("example", ".*"))

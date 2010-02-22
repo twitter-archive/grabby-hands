@@ -18,11 +18,12 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
-object NegativeSpec extends SpecBase {
+object NegativeSpec extends SpecBase(2) {
 
   "negative" should {
 
     doBefore {
+      noDetailedDiffs()  // else large string compare goes berzerk
       val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
       queues.foreach(queue => adhoc.deleteQueue(queue))
 
@@ -88,6 +89,7 @@ object NegativeSpec extends SpecBase {
         writes(idx) = new Write(text(idx))
         send.put(writes(idx))
       }
+      Thread.sleep(100)
       val startMs = System.currentTimeMillis
       for (idx <- 1 to depth) {
         val buffer = recv.poll(200, TimeUnit.MILLISECONDS)

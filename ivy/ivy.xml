@@ -4,6 +4,7 @@
     revision="0.1"
     e:buildpackage="com.twitter.grabbyhands"
     e:testclass="com.twitter.grabbyhands.TestRunner"
+    e:stresstestclass="com.twitter.grabbyhands.StressTestRunner"
     e:jarclassname="com.twitter.grabbyhands.Main"
     e:thriftpackage="com.twitter.grabbyhands.gen"
   />

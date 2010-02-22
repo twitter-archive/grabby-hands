@@ -45,7 +45,7 @@ protected class ConnectionRecv(
   protected val expectHeader = ByteBuffer.wrap(("VALUE " + queueName + " 0 ").getBytes)
 
   def run2(): Boolean = {
-    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " read")
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " read request")
 
     // Send request
     request.rewind()

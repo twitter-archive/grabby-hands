@@ -1,7 +1,7 @@
 /** Copyright 2010 Twitter, Inc. */
 package com.twitter.grabbyhands
 
-object LifecycleSpec extends SpecBase {
+object LifecycleSpec extends SpecBase(3) {
 
   "lifecycle" should {
 

@@ -17,7 +17,7 @@
 package com.twitter.grabbyhands
 
 import java.nio.ByteBuffer
-import java.util.concurrent.{CountDownLatch}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 class Write(val message: ByteBuffer) {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
@@ -27,6 +27,14 @@ class Write(val message: ByteBuffer) {
 
   def written(): Boolean = {
     writtenLatch.getCount == 0
+  }
+
+  def awaitWrite(timeout: Int, units: TimeUnit) {
+    writtenLatch.await(timeout, units)
+  }
+
+  def awaitWrite() {
+    writtenLatch.await(99999, TimeUnit.DAYS)
   }
 
   protected[grabbyhands] def write() {

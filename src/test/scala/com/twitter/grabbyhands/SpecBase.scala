@@ -18,12 +18,12 @@ package com.twitter.grabbyhands
 import java.util.logging.{FileHandler,Level,Logger,SimpleFormatter}
 import org.specs.Specification
 
-class SpecBase extends Specification {
+class SpecBase(val numQueues: Int) extends Specification {
   val log = Logger.getLogger(GrabbyHands.logname)
   var grab: GrabbyHands = _
   var config: Config = _
-  val queues = new  Array[String](5)
-  for (idx <- 0 to 4) {
+  val queues = new Array[String](numQueues)
+  for (idx <- 0 to numQueues - 1) {
     queues(idx) = "grabby_test" + idx
   }
   val queue = queues(0)
