@@ -6,20 +6,23 @@ object ConfigSpec extends SpecBase {
   "config" should {
 
     "set servers" in {
-      val config = Config.factory(Array("host1:1", "host2:2"))
+      val config = new Config()
+      config.addServers(Array("host1:1", "host2:2"))
       config.servers.size must be_==(2)
       config.servers(0).name must be_==("host1:1")
       config.servers(1).name must be_==("host2:2")
     }
 
     "set other values" in {
-      val config = Config.factory(Array("host1:1"))
+      val config = new Config()
+      config.addServer("host1:1")
       config.maxMessageBytes = 100
       config.maxMessageBytes must be_==(100)
     }
 
     "overrides work" in {
-      val config = Config.factory(Array("host:1"))
+      val config = new Config()
+      config.addServer("host:1")
       config.sendNumConnections must be_==(1)
       config.recvNumConnections must be_==(1)
       config.sendQueueDepth must be_==(1)
@@ -53,7 +56,8 @@ object ConfigSpec extends SpecBase {
     }
 
     "automatically increase queue depth" in {
-      val config = Config.factory(Array("host:1"))
+      val config = new Config()
+      config.addServer("host:1")
       config.sendNumConnections must be_==(1)
       config.recvNumConnections must be_==(1)
       config.sendQueueDepth must be_==(1)
@@ -75,7 +79,8 @@ object ConfigSpec extends SpecBase {
     }
 
     "support multiple queues" in {
-      val config = Config.factory(Array("host:1"))
+      val config = new Config()
+      config.addServer("host:1")
 
       val queues = config.addQueues(List("q1", "q2"))
       queues.size must be_==(2)
@@ -94,7 +99,8 @@ object ConfigSpec extends SpecBase {
     }
 
     "silently handle queue collisions" in {
-      val config = Config.factory(Array("host:1"))
+      val config = new Config()
+      config.addServer("host:1")
 
       val queues = config.addQueues(List("q1", "q1"))
       queues.size must be_==(1)

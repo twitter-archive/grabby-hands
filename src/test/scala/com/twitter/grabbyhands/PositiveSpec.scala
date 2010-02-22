@@ -249,7 +249,8 @@ object PositiveSpec extends SpecBase {
 
     "deep internal queues" in {
       val depth = 20
-      config = Config.factory(Array(host + ":" + port))
+      config = new Config()
+      config.addServer(host + ":" + port)
       config.maxMessageBytes = shortMessageMax
       config.sendQueueDepth = depth
       config.recvQueueDepth = depth

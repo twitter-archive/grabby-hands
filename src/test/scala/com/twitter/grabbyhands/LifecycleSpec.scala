@@ -28,7 +28,8 @@ object LifecycleSpec extends SpecBase {
 
     "correct number of threads created" in {
       val hosts = Array(host + ":" + port, host + ":" + port)
-      val config = Config.factory(hosts)
+      val config = new Config()
+      config.addServers(hosts)
       config.sendNumConnections = 3
       config.recvNumConnections = 4
       val queues2 = queues.slice(0, 2).force
@@ -44,8 +45,9 @@ object LifecycleSpec extends SpecBase {
     }
 
     "test zero recv connections" in {
-      val config = Config.factory(Array(host + ":" + port))
-      config.recvNumConnections  = 0
+      val config = new Config()
+      config.addServer(host + ":" + port)
+      config.recvNumConnections = 0
       config.addQueues(queues.slice(0, 1).force)
       config.queues.size must be_==(1)
 
@@ -56,8 +58,9 @@ object LifecycleSpec extends SpecBase {
     }
 
     "test zero send connections" in {
-      val config = Config.factory(Array(host + ":" + port))
-      config.sendNumConnections  = 0
+      val config = new Config()
+      config.addServer(host + ":" + port)
+      config.sendNumConnections = 0
       config.addQueues(queues.slice(0, 1).force)
       config.queues.size must be_==(1)
 
@@ -69,9 +72,10 @@ object LifecycleSpec extends SpecBase {
     }
 
     "test zero connection nonsense" in {
-      val config = Config.factory(Array(host + ":" + port))
-      config.recvNumConnections  = 0
-      config.sendNumConnections  = 0
+      val config = new Config()
+      config.addServer(host + ":" + port)
+      config.recvNumConnections = 0
+      config.sendNumConnections = 0
       config.addQueues(queues.slice(0, 1).force)
       config.queues.size must be_==(1)
 

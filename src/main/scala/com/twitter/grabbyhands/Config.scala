@@ -20,19 +20,11 @@ import java.util.logging.Logger
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.reflect.BeanProperty
 
-class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigConnection {
+class Config() extends ConfigConnection {
   protected val log = Logger.getLogger(GrabbyHands.logname)
   protected[grabbyhands] val queues = new HashMap[String, ConfigQueue]()
+  protected[grabbyhands] val servers = new ListBuffer[String]()
   val configConnection = new ConfigConnection()
-
-  val servers = {
-    val rv = new ListBuffer[String]
-    val iterator = serversJava.iterator()
-    while (iterator.hasNext()) {
-      rv += iterator.next()
-    }
-    rv.toList
-  }
 
   @BeanProperty var maxMessageBytes = Config.defaultMaxMessageBytes
   @BeanProperty var kestrelReadTimeoutMs = Config.defaultKestrelReadTimeoutMs
@@ -68,25 +60,36 @@ class Config(serversJava: java.lang.Iterable[java.lang.String]) extends ConfigCo
     rv
   }
 
+  def addServer(server: String) {
+    servers += server
+  }
+
+  def addServers(servers: java.lang.Iterable[java.lang.String]) {
+    val iterator = servers.iterator()
+    while (iterator.hasNext()) {
+      addServer(iterator.next())
+    }
+  }
+
+  def addServers(servers: Seq[String]) {
+    servers.foreach(addServer)
+  }
+
+
   def record() {
     log.config("servers=" + servers.mkString("[", ",", "]"))
-    queues.values.foreach(_.record())
+    log.config(this.toString)
     log.config("maxMessageBytes=" + maxMessageBytes)
     log.config("kestrelReadTimeoutMs=" + kestrelReadTimeoutMs)
     log.config("connectTimeoutMs=" + connectTimeoutMs)
     log.config("readTimeoutMs=" + readTimeoutMs)
     log.config("writeTimeoutMs=" + writeTimeoutMs)
     log.config("reconnectHolddownMs=" + reconnectHolddownMs)
+    queues.values.foreach(_.record())
   }
 }
 
 object Config {
-  def factory(servers: Seq[String]): Config = {
-    val args = new java.util.Vector[String](servers.length)
-    servers.foreach(server => args.add(server))
-    new Config(args)
-  }
-
   val defaultMaxMessageBytes = 65536
   val defaultKestrelReadTimeoutMs = 2000
   val defaultConnectTimeoutMs = 1000

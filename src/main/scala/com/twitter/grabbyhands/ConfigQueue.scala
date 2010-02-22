@@ -23,5 +23,5 @@ class ConfigQueue(val name: String, config: Config) extends ConfigConnection(con
 
   def record() = log.config(toString)
 
-  override def toString(): String = "queueName=" + name + super.toString
+  override def toString(): String = "queueName=" + name + " " + super.toString
 }

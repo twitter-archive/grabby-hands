@@ -33,7 +33,8 @@ class SpecBase extends Specification {
   val shortMessageMax = 256
 
   def defaults(): Config = {
-    config = Config.factory(Array(host + ":" + port))
+    config = new Config()
+    config.addServer(host + ":" + port)
     config.maxMessageBytes = shortMessageMax
     config.addQueue(queue)
     config

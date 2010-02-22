@@ -40,7 +40,8 @@ object NegativeSpec extends SpecBase {
     "tolerate down kestrel" in {
       // assume that nothing is running on (default kestrel port + 10)
       val badServer = host + ":" + (port + 10)
-      config = Config.factory(Array(badServer))
+      config = new Config()
+      config.addServer(badServer)
       config.connectTimeoutMs = 200
       config.addQueue(queue)
 
@@ -58,7 +59,7 @@ object NegativeSpec extends SpecBase {
       serverCount.connectionExceptions.get must be_==(2)
     }
 
-    "make progress with only one up kestrel" in {
+    "make progress with only one up kestrel and several down kestrels" in {
       fail("XXX")
     }
 

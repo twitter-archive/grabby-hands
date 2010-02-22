@@ -23,6 +23,7 @@ import scala.collection.mutable.HashMap
 
 class GrabbyHands(val config: Config) {
   protected[grabbyhands] val log = Logger.getLogger(GrabbyHands.logname)
+  config.record()
 
   val counters = new Counters()
   val serverCounters: Map[String, ServerCounters] = {

@@ -31,7 +31,8 @@ public class JavaTest {
   protected List<String> queues = Arrays.asList(queue);
 
   @Test public void testCreate() {
-    Config config = new Config(servers);
+    Config config = new Config();
+    config.addServers(servers);
 
     config.setRecvNumConnections(4);
     config.setSendNumConnections(5);
@@ -60,7 +61,8 @@ public class JavaTest {
   }
 
   @Test public void testWriteRead() {
-    Config config = new Config(servers);
+    Config config = new Config();
+    config.addServers(servers);
     config.addQueues(queues);
     GrabbyHands grabbyHands = new GrabbyHands(config);
     BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
