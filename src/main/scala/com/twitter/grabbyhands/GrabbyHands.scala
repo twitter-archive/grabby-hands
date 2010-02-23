@@ -40,6 +40,8 @@ class GrabbyHands(val config: Config) {
     Map() ++ rv
   }
 
+  log.fine("grabbyhands started")
+
   def getRecvQueue(queue: String): BlockingQueue[ByteBuffer] = {
     queues(queue).recvQueue
   }
@@ -82,5 +84,5 @@ class GrabbyHands(val config: Config) {
 }
 
 object GrabbyHands {
-  val logname = "com.twitter.grabbyhands"
+  val logname = "grabbyhands"
 }
