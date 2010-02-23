@@ -18,7 +18,7 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
-object PositiveSpec extends SpecBase(2) {
+object PositiveSpec extends SpecBase(4) {
 
   "positive" should {
     doBefore {
@@ -350,7 +350,7 @@ object PositiveSpec extends SpecBase(2) {
     }
 
     "support multiple queues" in {
-      val num = 5
+      val num = 4
       num must be_<=(queues.size)
       for (idx <- 1 to num - 1) {
         config.addQueue(queues(idx))

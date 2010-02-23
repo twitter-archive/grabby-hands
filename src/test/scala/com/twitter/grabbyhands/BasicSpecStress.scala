@@ -16,36 +16,46 @@
 package com.twitter.grabbyhands
 
 import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{BlockingQueue,TimeUnit}
 
 object BasicSpecStress extends SpecBase(50) {
 
   def basicStress(testMessages:Int, testNumQueues: Int,
-                  testConnectionsPerServer: Int, testLength: Int)(readWrite: Boolean) {
+                  testConnectionsPerServer: Int, testLength: Int, serial: Boolean) {
+    log.fine("testNumQueues " + testNumQueues + " testConnectionsPerServer " +
+             testConnectionsPerServer + " serial " + serial)
+    testMessages % testNumQueues must be_==(0)
     config = new Config()
     config.addServer(host + ":" + port)
     config.maxMessageBytes = testLength
-    config.sendQueueDepth = 100
-    config.recvQueueDepth = 100
+    config.sendQueueDepth = 225
+    config.recvQueueDepth = 225
     testNumQueues must be_<=(numQueues)
     val testQueues = queues.slice(0, testNumQueues).force
-    testQueues.size must be_==(testNumQueues)
     val queueConfig = config.addQueues(testQueues)
 
     ctor()
     grab must notBeNull
-    val send = grab.getSendQueue(queue) // XXX needs to be an array of queues
-    val recv = grab.getRecvQueue(queue) // XXX needs to be an array of queues
+    val recvQueues = new Array[BlockingQueue[ByteBuffer]](testNumQueues)
+    val sendQueues = new Array[BlockingQueue[Write]](testNumQueues)
+    for (idx <- 0 to testNumQueues - 1) {
+      log.warning("queue " + idx + " " + queues(idx))
+      recvQueues(idx) = grab.getRecvQueue(queues(idx))
+      sendQueues(idx) = grab.getSendQueue(queues(idx))
+    }
 
     val sendText = genAsciiString(testLength)
 
     var startMs = System.currentTimeMillis
     var lastWrite: Write = null
+    var queueIdx = 0
     for (idx <- 1 to testMessages) {
       lastWrite = new Write(sendText)
-      send.put(lastWrite)
+      sendQueues(queueIdx).put(lastWrite)
+      queueIdx += 1
+      if (queueIdx == testNumQueues) queueIdx = 0
     }
-    if (!readWrite) {
+    if (serial) {
       log.fine("waiting for last message to write")
       lastWrite.awaitWrite(1, TimeUnit.MINUTES)
     }
@@ -56,7 +66,9 @@ object BasicSpecStress extends SpecBase(50) {
 
     startMs = System.currentTimeMillis
     for (idx <- 1 to testMessages) {
-      val buffer = recv.poll(250, TimeUnit.SECONDS)
+      val buffer = recvQueues(queueIdx).poll(250, TimeUnit.SECONDS)
+      queueIdx += 1
+      if (queueIdx == testNumQueues) queueIdx = 0
       buffer must notBeNull
       val recvTest = new String(buffer.array)
       recvTest must be_==(sendText)
@@ -85,37 +97,36 @@ object BasicSpecStress extends SpecBase(50) {
       }
     }
 
-    "many messages to one queue one connection" in {
-      def fn = basicStress(10000, 1, 1, 2048)_
-      "serial" in {
-        fn(false)
-      }
-      "parallel" in {
-        fn(true)
-      }
+    "many messages to one queue one connection serial" in {
+      basicStress(10000, 1, 1, 2048, true)
     }
 
-    "many messages to one queue many connections" in {
-      def fn = basicStress(10000, 1, 10, 2048)_
-      "serial" in {
-        fn(false)
-      }
-      "parallel" in {
-        fn(true)
-      }
+    "many messages to one queue one connection parallel" in {
+      basicStress(10000, 1, 1, 2048, false)
     }
 
-    "many messages to many queues one server" in {
+    "many messages to one queue many connections serial" in {
+      basicStress(10000, 1, 10, 2048, true)
     }
 
-    "several large messages to one queue one server" in {
-      def fn = basicStress(5000, 1, 1, 32000)_
-      "serial" in {
-        fn(false)
-      }
-      "parallel" in {
-        fn(true)
-      }
+    "many messages to one queue many connections parallel" in {
+      basicStress(10000, 1, 10, 2048, false)
+    }
+
+    "many messages to many queues many connections serial" in {
+      basicStress(10000, 10, 10, 2048, true)
+    }
+
+    "many messages to many queues many connections parallel" in {
+      basicStress(10000, 10, 10, 2048, false)
+    }
+
+    "several large messages to one queue one server serial" in {
+      basicStress(5000, 1, 1, 32000, true)
+    }
+
+    "several large messages to one queue one server parallel" in {
+      basicStress(5000, 1, 1, 32000, false)
     }
   }
 }
