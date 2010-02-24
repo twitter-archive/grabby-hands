@@ -63,13 +63,6 @@ protected class ConnectionRecv(
       return false
     }
 
-//    log.finest(connectionName + " XXX read raw |" +
-//               new String(response.array, 0, response.position) + "|")
-
-//    for (idx <- 0 to response.position) {
-//      log.finest(connectionName + " XXX read raw byte " + idx + " " + response.array(idx))
-//    }
-
     val positionSave = response.position
     response.flip()
 
@@ -86,8 +79,6 @@ protected class ConnectionRecv(
     }
     response.position(positionSave)
     response.limit(response.capacity())
-
-    log.finest(connectionName + " position1 " + response.position)
 
     if (response.position < expectHeader.capacity + 1) {
       // Read enough for expected header and at least a 1 digit length.
@@ -111,7 +102,6 @@ protected class ConnectionRecv(
       if (response.get() == '\n') {
         found = true
       } else if (!response.hasRemaining()) {
-        log.finest(connectionName + " read additional header bytes")
         // Read more, in the unlikely case that the entire header didn't come over at once
         if (haltLatch.getCount() == 0) {
           return false
@@ -136,7 +126,6 @@ protected class ConnectionRecv(
     // Parse the payload length, ignoring 2 trailing chars \r\n
     val payloadLength = Integer.parseInt(new String(
       response.array, expectHeader.capacity, response.position - (2 + expectHeader.capacity)))
-    log.finest(connectionName + " payload length " + payloadLength)
     if (payloadLength > maxMessageBytes) {
       log.warning(connectionName + " protocol error on payloadLength=" + payloadLength +
                   " > maxMessageBytes=" + maxMessageBytes)
@@ -152,11 +141,7 @@ protected class ConnectionRecv(
     val footerEnd = footerStart + expectEnd.capacity
     val needed = footerEnd - response.limit
 
-    log.finest(connectionName + " XXX start=" + payloadStart + " end=" + payloadEnd +
-               " footerStart=" + footerStart + " footerEnd=" + footerEnd + " needed=" + needed)
-
     if (needed > 0) {
-      log.finest(connectionName + " XXX need to read more payload " + needed)
       response.position(response.limit)
       response.limit(response.capacity)
       if (!readBuffer(footerEnd, response)) {
@@ -170,9 +155,6 @@ protected class ConnectionRecv(
     val payload = ByteBuffer.allocate(payloadLength)
     response.position(payloadStart)
     response.get(payload.array)
-
-//    log.finest(connectionName + " XXX payload |" +
-//               new String(payload.array, 0, payload.capacity) + "|")
 
     // Consume the END footer
     response.position(footerStart)
