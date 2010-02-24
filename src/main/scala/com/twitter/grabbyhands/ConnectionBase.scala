@@ -39,7 +39,6 @@ protected abstract class ConnectionBase(queue: Queue,
   writeTimeoutMs = grabbyHands.config.writeTimeoutMs
   reconnectHolddownMs = grabbyHands.config.reconnectHolddownMs
 
-  protected val haltLatch = new CountDownLatch(1)
   protected val startedLatch = new CountDownLatch(1)
   protected val paused = new AtomicBoolean(false)
   protected val pauseBarrier = new Semaphore(1)
@@ -85,46 +84,6 @@ protected abstract class ConnectionBase(queue: Queue,
   }
 
   def run2(): Boolean
-
-  protected def readBuffer(atleastUntilPosition: Int, buffer: ByteBuffer): Boolean = {
-    while (buffer.position < atleastUntilPosition) {
-      if (haltLatch.getCount == 0) {
-        return false
-      }
-      if (!selectRead()) {
-        return false
-      }
-      socket.read(buffer)
-    }
-    true
-  }
-
-  protected def writeBuffer(buffer: ByteBuffer): Boolean = {
-    while (buffer.hasRemaining) {
-      if (haltLatch.getCount == 0) {
-        return false
-      }
-      if (!selectWrite()) {
-        return false
-      }
-      socket.write(buffer)
-    }
-    true
-  }
-
-  protected def writeBufferVector(bytes: Int, buffers: Array[ByteBuffer]): Boolean = {
-    var left = bytes.asInstanceOf[Long]
-    while (left > 0) {
-      if (haltLatch.getCount == 0) {
-        return false
-      }
-      if (!selectWrite()) {
-        return false
-      }
-      left -= socket.write(buffers.toArray)
-    }
-    true
-  }
 
   def halt() {
     log.fine(connectionName + " halt")

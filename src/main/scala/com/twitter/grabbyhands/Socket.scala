@@ -26,9 +26,6 @@ protected[grabbyhands] trait Socket {
   val log = Logger.getLogger(GrabbyHands.logname)
   var socket: SocketChannel = _
   var opened = false
-  //XXX See if we can go back to two selectors
-  //  var readSelector: Selector = _
-  //  var writeSelector: Selector = _
   var readWriteSelector: Selector = _
   var server: String = _
   var serverCounters: ServerCounters = _
@@ -37,6 +34,8 @@ protected[grabbyhands] trait Socket {
   var readTimeoutMs = Config.defaultReadTimeoutMs
   var writeTimeoutMs = Config.defaultWriteTimeoutMs
   var reconnectHolddownMs = Config.defaultReconnectHolddownMs
+
+  val haltLatch = new CountDownLatch(1)
 
   protected def open() {
     log.finer(socketName + " open socket start")
@@ -123,9 +122,49 @@ protected[grabbyhands] trait Socket {
     rv
   }
 
+  protected def readBuffer(atleastUntilPosition: Int, buffer: ByteBuffer): Boolean = {
+    while (buffer.position < atleastUntilPosition) {
+      if (haltLatch.getCount == 0) {
+        return false
+      }
+      if (!selectRead()) {
+        return false
+      }
+      if (socket.read(buffer) < 0) {
+        return false
+      }
+    }
+    true
+  }
+
+  protected def writeBuffer(buffer: ByteBuffer): Boolean = {
+    while (buffer.hasRemaining) {
+      if (haltLatch.getCount == 0) {
+        return false
+      }
+      if (!selectWrite()) {
+        return false
+      }
+      socket.write(buffer)
+    }
+    true
+  }
+
+  protected def writeBufferVector(bytes: Int, buffers: Array[ByteBuffer]): Boolean = {
+    var left = bytes.asInstanceOf[Long]
+    while (left > 0) {
+      if (haltLatch.getCount == 0) {
+        return false
+      }
+      if (!selectWrite()) {
+        return false
+      }
+      left -= socket.write(buffers.toArray)
+    }
+    true
+  }
+
   def close() {
-    //    if (readSelector != null) readSelector.close()
-    //    if (writeSelector != null) writeSelector.close()
     if (readWriteSelector != null) {
       readWriteSelector.close()
       readWriteSelector = null

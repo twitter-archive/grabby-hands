@@ -31,6 +31,14 @@ instances of GrabbyHands.
 Arbitrary user-defined read and write timeout behaviors are possible
 by interacting directly with a Blocking Queue.
 
+TESTS
+-----
+All tests assume a kestrel process running on localhost:22133.
+
+% ant test runs the normal tests that are run during ant package.
+% ant stress will run a small stress test suite and give some performance numbers.
+% ant javatest will run the java example.
+
 LICENSE
 -------
 Apache 2.0 License. See included license file.

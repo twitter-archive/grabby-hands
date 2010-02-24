@@ -51,6 +51,11 @@ protected[grabbyhands] class ConnectionSend(
   protected var write: Write = null
 
   override def run2(): Boolean = {
+    if (write != null) {
+      // Previous write didn't complete
+      requests.foreach(_.rewind())
+    }
+
     while (write == null) {
       if (haltLatch.getCount == 0) {
         return false
@@ -76,6 +81,7 @@ protected[grabbyhands] class ConnectionSend(
       log.finer(connectionName + " write canceled")
       return true
     }
+
 
     // Start over with a fresh length
     if (!writeBufferVector(requestLength, requests)) {
