@@ -24,7 +24,7 @@ import java.util.concurrent.{BlockingQueue, TimeUnit}
 import java.util.logging.Level
 
 // ConnectionRecv owns the socket, ConnectionSend only writes into the socket if available.
-protected class ConnectionRecv(
+protected[grabbyhands] class ConnectionRecv(
   queue: Queue,
   connectionName: String,
   server: String

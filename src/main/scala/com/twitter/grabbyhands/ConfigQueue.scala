@@ -18,6 +18,9 @@ package com.twitter.grabbyhands
 
 import java.util.logging.Logger
 
+/**
+ * Overrides connection parameters on a queue by queue basis.
+ */
 class ConfigQueue(val name: String, config: Config) extends ConfigConnection(config) {
   protected val log = Logger.getLogger(GrabbyHands.logname)
 

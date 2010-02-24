@@ -18,6 +18,10 @@ package com.twitter.grabbyhands
 
 import java.lang.Cloneable
 
+/**
+ * Configures connection parameters, one ConfigDirection object per "direction", send
+ * or receive.
+ */
 class ConfigConnection(sendConfig: ConfigDirection, recvConfig: ConfigDirection) {
 
   def this() = this(new ConfigDirection("send"), new ConfigDirection("recv"))

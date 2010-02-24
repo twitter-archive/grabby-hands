@@ -27,6 +27,7 @@
       <arg value="${ivy.module} ${ivy.revision}" />
       <arg value="-linksource" />
       <arg line="${doc.sources}" />
+      <arg value="-access:public" />
     </java>
   </target>
 

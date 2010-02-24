@@ -83,8 +83,8 @@ object BasicSpecStress extends SpecBase(50) {
   "basicstress" should {
     doBefore {
       noDetailedDiffs()  // else large string compare goes berzerk
-      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
-      queues.foreach(queue => adhoc.deleteQueue(queue))
+      val meta = new MetaRequest(hostPort, None)
+      queues.foreach(queue => meta.deleteQueue(queue))
 
       defaults()
       grab = null

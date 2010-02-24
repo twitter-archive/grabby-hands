@@ -23,8 +23,8 @@ object PositiveSpec extends SpecBase(4) {
   "positive" should {
     doBefore {
       noDetailedDiffs()  // else large string compare goes berzerk
-      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
-      queues.foreach(queue => adhoc.deleteQueue(queue))
+      val meta = new MetaRequest(hostPort, None)
+      queues.foreach(queue => meta.deleteQueue(queue))
 
       defaults()
       grab = null

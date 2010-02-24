@@ -22,7 +22,7 @@ import java.nio.channels.SocketChannel
 import java.util.concurrent.{BlockingQueue, TimeUnit}
 import java.util.logging.Level
 
-protected class ConnectionSend(
+protected[grabbyhands] class ConnectionSend(
   queue: Queue,
   connectionName: String,
   server: String

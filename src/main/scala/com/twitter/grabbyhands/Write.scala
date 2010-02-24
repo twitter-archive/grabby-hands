@@ -19,20 +19,24 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
+/** Wraps outgoing messages. */
 class Write(val message: ByteBuffer) {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes))
   protected val writtenLatch = new CountDownLatch(1)
   protected val cancelLatch = new CountDownLatch(1)
 
+  /** Returns true iff the message has been sent to a Kestrel server. */
   def written(): Boolean = {
     writtenLatch.getCount == 0
   }
 
+  /** Returns only once the message has been sent to a Kestrel server or timeout occurs. */
   def awaitWrite(timeout: Int, units: TimeUnit) {
     writtenLatch.await(timeout, units)
   }
 
+  /** Returns only once hte message has been sent to a Kestrel. */
   def awaitWrite() {
     writtenLatch.await(99999, TimeUnit.DAYS)
   }
@@ -41,10 +45,12 @@ class Write(val message: ByteBuffer) {
     writtenLatch.countDown()
   }
 
+  /** Cancels a write waiting in the local queue. */
   def cancel() {
     cancelLatch.countDown()
   }
 
+  /** Returns true if write was cancelled before it could be sent to a Kestrel server. */
   def cancelled(): Boolean = {
     cancelLatch.getCount == 0
   }

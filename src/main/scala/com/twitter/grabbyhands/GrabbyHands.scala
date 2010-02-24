@@ -21,6 +21,9 @@ import java.util.concurrent.BlockingQueue
 import java.util.logging.Logger
 import scala.collection.mutable.HashMap
 
+/**
+ * Represents a cluster of Kestrel servers that serve an identical set of queues.
+ */
 class GrabbyHands(val config: Config) {
   protected[grabbyhands] val log = Logger.getLogger(GrabbyHands.logname)
   config.record()
@@ -42,27 +45,32 @@ class GrabbyHands(val config: Config) {
 
   log.fine("grabbyhands started")
 
+  /** Returns an internal queue that delivers new messages from Kestrel. */
   def getRecvQueue(queue: String): BlockingQueue[ByteBuffer] = {
     queues(queue).recvQueue
   }
 
+  /** Returns an internal queue that delivers messages to Kestrel. */
   def getSendQueue(queue: String): BlockingQueue[Write] = {
     queues(queue).sendQueue
   }
 
+  /** Deletes a queue on the Kestrel cluster. */
   def deleteQueue(queue: String) {
     for (server <- config.servers) {
-      val adhoc = new AdHocRequest(serverCounters(server), server)
-      adhoc.deleteQueue(queue)
+      val meta = new MetaRequest(server, Some(serverCounters(server)))
+      meta.deleteQueue(queue)
     }
   }
 
+  /** Halts the client, but does not wait for the client threads to join. */
   def halt() {
     log.fine("grabbyhands halt start")
     queues.values.foreach(_.halt)
     log.fine("grabbyhands halt end")
   }
 
+  /** Halts the client and waits for the client threads to join. */
   def join() {
     log.fine("grabbyhands join start")
     halt()
@@ -70,12 +78,14 @@ class GrabbyHands(val config: Config) {
     log.fine("grabbyhands join end")
   }
 
+  /** Pauses client threads. */
   def pause() {
     log.fine("grabbyhands pause start")
     queues.values.foreach(_.pause)
     log.fine("grabbyhands pause end")
   }
 
+  /** Resumes client threads. */
   def resume() {
     log.fine("grabbyhands resume start")
     queues.values.foreach(_.resume)
@@ -83,6 +93,6 @@ class GrabbyHands(val config: Config) {
   }
 }
 
-object GrabbyHands {
+protected [grabbyhands] object GrabbyHands {
   val logname = "grabbyhands"
 }

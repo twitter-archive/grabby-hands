@@ -24,8 +24,8 @@ object NegativeSpec extends SpecBase(2) {
 
     doBefore {
       noDetailedDiffs()  // else large string compare goes berzerk
-      val adhoc = new AdHocRequest(new ServerCounters(), hostPort)
-      queues.foreach(queue => adhoc.deleteQueue(queue))
+      val meta = new MetaRequest(hostPort, None)
+      queues.foreach(queue => meta.deleteQueue(queue))
 
       defaults()
       grab = null

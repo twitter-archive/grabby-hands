@@ -20,7 +20,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.mutable.{ArrayBuffer, HashMap, ListBuffer}
 
-case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
+protected case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
   protected val log = grabbyHands.log
   protected[grabbyhands] val counters = new QueueCounters()
   protected[grabbyhands] val recvQueue = new LinkedBlockingQueue[ByteBuffer](
@@ -76,7 +76,7 @@ case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
   }
 }
 
-object Queue {
+protected [grabbyhands] object Queue {
   def factory(grabbyHands: GrabbyHands): Map[String, Queue] = {
     val rv = new HashMap[String, Queue]()
     grabbyHands.config.queues.values.foreach(

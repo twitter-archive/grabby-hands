@@ -22,7 +22,7 @@ import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util.concurrent.CountDownLatch
 import java.util.logging.{Level, Logger}
 
-trait Socket {
+protected[grabbyhands] trait Socket {
   val log = Logger.getLogger(GrabbyHands.logname)
   var socket: SocketChannel = _
   var opened = false

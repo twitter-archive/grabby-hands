@@ -19,8 +19,14 @@ package com.twitter.grabbyhands
 import java.lang.Cloneable
 import scala.reflect.BeanProperty
 
+/** Configures a send or receive direction. */
 protected[grabbyhands] class ConfigDirection(name: String) extends Cloneable {
   private var _numConnections = 1
+
+  /**
+   * Configures the depth of the internal queue and thus the number of outstanding messages.
+   * Excessive values increase data loss risk or decrease liveness.
+   */
   @BeanProperty var queueDepth = 1
 
   def numConnections: Int = _numConnections
@@ -31,6 +37,7 @@ protected[grabbyhands] class ConfigDirection(name: String) extends Cloneable {
     _numConnections = value
  }
 
+  /** Configures the number of connections, and thus parallel transactions. */
   def setNumConnections(value: Int) = numConnections = value
   def getNumConnections(): Int = numConnections
 
