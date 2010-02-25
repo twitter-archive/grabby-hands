@@ -18,6 +18,7 @@ package com.twitter.grabbyhands
 
 import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
+import scala.collection.Map
 import scala.collection.mutable.{ArrayBuffer, HashMap, ListBuffer}
 
 protected case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
@@ -81,6 +82,6 @@ protected [grabbyhands] object Queue {
     val rv = new HashMap[String, Queue]()
     grabbyHands.config.queues.values.foreach(
       queue => rv + (queue.name -> new Queue(grabbyHands, queue)))
-    Map() ++ rv
+    rv.readOnly
   }
 }

@@ -17,6 +17,8 @@
 package com.twitter.grabbyhands
 
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.Map
+import scala.collection.mutable.HashMap
 
 class ServerCounters() {
   val bytesRecv = new AtomicLong()
@@ -33,4 +35,21 @@ class ServerCounters() {
   val connectionReadTimeout = new AtomicLong()
   val connectionWriteTimeout = new AtomicLong()
   val protocolError = new AtomicLong()
+
+  def toMap(): Map[String, Long] = {
+    val rv = new HashMap[String, Long]()
+    rv + ("bytesRecv" -> bytesRecv.get)
+    rv + ("bytesSent" -> bytesSent.get)
+    rv + ("messagesRecv" -> messagesRecv.get)
+    rv + ("messagesSent" -> messagesSent.get)
+    rv + ("connectionOpenAttempt" -> connectionOpenAttempt.get)
+    rv + ("connectionOpenSuccess" -> connectionOpenSuccess.get)
+    rv + ("connectionOpenTimeout" -> connectionOpenTimeout.get)
+    rv + ("connectionCurrent" -> connectionCurrent.get)
+    rv + ("connectionExceptions" -> connectionExceptions.get)
+    rv + ("connectionReadTimeout" -> connectionReadTimeout.get)
+    rv + ("connectionWriteTimeout" -> connectionWriteTimeout.get)
+    rv + ("protocolError" -> protocolError.get)
+    rv.readOnly
+  }
 }

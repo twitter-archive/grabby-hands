@@ -75,6 +75,22 @@ object PositiveSpec extends SpecBase(4) {
       queueCount.messagesRecv.get must be_==(1)
       queueCount.bytesRecv.get must be_==(sendText.length)
       queueCount.kestrelGetTimeouts.get must be_==(0)
+
+      val cs = grab.countersToString("f")
+      cs must include("f." + hostPort + ".protocolError: 0")
+      cs must include("f." + hostPort + ".connectionWriteTimeout: 0")
+      cs must include("f." + hostPort + ".connectionReadTimeout: 0")
+      cs must include("f." + hostPort + ".messagesSent: 1")
+      cs must include("f." + hostPort + ".bytesSent: " + sendText.length)
+      cs must include("f." + hostPort + ".messagesRecv: 1")
+      cs must include("f." + hostPort + ".bytesRecv: " + sendText.length)
+
+      cs must include("f." + queue + ".protocolError: 0")
+      cs must include("f." + queue + ".messagesSent: 1")
+      cs must include("f." + queue + ".bytesSent: " + sendText.length)
+      cs must include("f." + queue + ".messagesRecv: 1")
+      cs must include("f." + queue + ".bytesRecv: " + sendText.length)
+      cs must include("f." + queue + ".kestrelGetTimeouts: 0")
     }
 
     "connection counters" in {
@@ -91,6 +107,13 @@ object PositiveSpec extends SpecBase(4) {
       serverCount.connectionOpenTimeout.get must be_==(0)
       serverCount.connectionCurrent.get must be_==(2)
       serverCount.connectionExceptions.get must be_==(0)
+
+      val cs = grab.countersToString()
+      cs must include(hostPort + ".connectionOpenAttempt: 2")
+      cs must include(hostPort + ".connectionOpenSuccess: 2")
+      cs must include(hostPort + ".connectionOpenTimeout: 0")
+      cs must include(hostPort + ".connectionCurrent: 2")
+      cs must include(hostPort + ".connectionExceptions: 0")
 
       grab.join()
       serverCount.connectionCurrent.get must be_==(0)
@@ -123,6 +146,9 @@ object PositiveSpec extends SpecBase(4) {
       queueCount.bytesSent.get must be_==(0)
       queueCount.messagesSent.get must be_==(0)
       queueCount.protocolError.get must be_==(0)
+
+      val cs = grab.countersToString()
+      cs must include(queue + ".kestrelGetTimeouts: " + rounds)
     }
 
     "messages of varying length beyond internal queue depth" in {
@@ -344,6 +370,9 @@ object PositiveSpec extends SpecBase(4) {
       queueCount.messagesRecv.get must be_==(0)
       queueCount.bytesRecv.get must be_==(0)
       queueCount.sendCancelled.get must be_==(1)
+
+      val cs = grab.countersToString()
+      cs must include(queue + ".sendCancelled: 1")
 
       write.written must beFalse
       write.cancelled must beTrue

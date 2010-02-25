@@ -17,6 +17,7 @@
 package com.twitter.grabbyhands
 
 import java.util.logging.Logger
+import scala.collection.Map
 import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.reflect.BeanProperty
 
@@ -69,7 +70,7 @@ class Config() extends ConfigConnection {
       val queue = addQueue(name)
       rv + (name -> addQueue(name))
     }
-    Map() ++ rv
+    rv.readOnly
   }
 
   /** Adds several queues, inheriting the current parameters. */

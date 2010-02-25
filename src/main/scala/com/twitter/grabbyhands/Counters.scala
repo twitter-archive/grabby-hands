@@ -17,8 +17,17 @@
 package com.twitter.grabbyhands
 
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.Map
+import scala.collection.mutable.HashMap
 
 class Counters() {
   val threads = new AtomicLong(0)
   val pausedThreads = new AtomicLong(0)
+
+  def toMap(): Map[String, Long] = {
+    val rv = new HashMap[String, Long]()
+    rv + ("threads" -> threads.get)
+    rv + ("pausedThreads" -> pausedThreads.get)
+    rv.readOnly
+  }
 }

@@ -57,6 +57,10 @@ Write.awaitWrite().
 If at least one Kestrel is available, read and write progress can
 be made.
 
+Immutable configuration. The entire configuration is passed in at
+instantiation and cannot be modified. Saftey and simplicity over
+flexibility and complexity.
+
 Counters for everything.
 
 

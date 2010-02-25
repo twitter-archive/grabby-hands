@@ -19,6 +19,7 @@ package com.twitter.grabbyhands
 import java.nio.ByteBuffer
 import java.util.concurrent.BlockingQueue
 import java.util.logging.Logger
+import scala.collection.Map
 import scala.collection.mutable.HashMap
 
 /**
@@ -32,7 +33,7 @@ class GrabbyHands(val config: Config) {
   val serverCounters: Map[String, ServerCounters] = {
     val rv = new HashMap[String, ServerCounters]()
     config.servers.foreach(server => rv + (server -> new ServerCounters()))
-    Map() ++ rv
+    rv.readOnly
   }
 
   protected[grabbyhands] val queues = Queue.factory(this)
@@ -40,7 +41,7 @@ class GrabbyHands(val config: Config) {
   val queueCounters: Map[String, QueueCounters] = {
     val rv = new HashMap[String, QueueCounters]()
     queues.values.foreach(queue => rv + (queue.name -> queue.counters))
-    Map() ++ rv
+    rv.readOnly
   }
 
   log.fine("grabbyhands started")
@@ -90,6 +91,50 @@ class GrabbyHands(val config: Config) {
     log.fine("grabbyhands resume start")
     queues.values.foreach(_.resume)
     log.fine("grabbyhands resume end")
+  }
+
+
+  /** Returns counters in "name: value\n" format */
+  def countersToString(): String = {
+    countersToString(None)
+  }
+
+  /** Returns counters in "prefix.name: value\n" format */
+  def countersToString(prefix: String): String = {
+    countersToString(Some(prefix))
+  }
+
+  /** Returns counters in "prefix.name: value\n" format */
+  def countersToString(prefix: Option[String]): String = {
+    val sb = new StringBuffer()
+    for ((name, value) <- countersToMap()) {
+      if (prefix.isDefined) {
+        sb.append(prefix.get)
+        sb.append(".")
+      }
+      sb.append(name)
+      sb.append(": ")
+      sb.append(value)
+      sb.append("\n")
+    }
+    sb.toString
+  }
+
+  /** Returns counters as a map */
+  def countersToMap(): Map[String, Long] = {
+    val rv = new HashMap[String, Long]()
+    rv ++ counters.toMap()
+    for ((server, serverCounters) <- serverCounters) {
+      for ((name, value) <- serverCounters.toMap) {
+        rv += server + "." + name -> value
+      }
+    }
+    for ((queue, queueCounters) <- queueCounters) {
+      for ((name, value) <- queueCounters.toMap) {
+        rv += queue + "." + name -> value
+      }
+    }
+    rv.readOnly
   }
 }
 

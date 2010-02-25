@@ -17,6 +17,8 @@
 package com.twitter.grabbyhands
 
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.Map
+import scala.collection.mutable.HashMap
 
 class QueueCounters() {
   val bytesRecv = new AtomicLong()
@@ -27,4 +29,16 @@ class QueueCounters() {
   val kestrelGetTimeouts = new AtomicLong()
   val protocolError = new AtomicLong()
   val sendCancelled = new AtomicLong()
+
+  def toMap(): Map[String, Long] = {
+    val rv = new HashMap[String, Long]()
+    rv + ("bytesRecv" -> bytesRecv.get)
+    rv + ("bytesSent" -> bytesSent.get)
+    rv + ("messagesRecv" -> messagesRecv.get)
+    rv + ("messagesSent" -> messagesSent.get)
+    rv + ("kestrelGetTimeouts" -> kestrelGetTimeouts.get)
+    rv + ("protocolError" -> protocolError.get)
+    rv + ("sendCancelled" -> sendCancelled.get)
+    rv.readOnly
+  }
 }
