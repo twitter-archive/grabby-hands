@@ -126,12 +126,12 @@ class GrabbyHands(val config: Config) {
     rv ++ counters.toMap()
     for ((server, serverCounters) <- serverCounters) {
       for ((name, value) <- serverCounters.toMap) {
-        rv += server + "." + name -> value
+        rv += "server." + server + "." + name -> value
       }
     }
     for ((queue, queueCounters) <- queueCounters) {
       for ((name, value) <- queueCounters.toMap) {
-        rv += queue + "." + name -> value
+        rv += "queue." + queue + "." + name -> value
       }
     }
     rv.readOnly

@@ -62,26 +62,26 @@ object CountersSpec extends SpecBase(1) {
       cs must include("threads: 100")
       cs must include("pausedThreads: 200")
 
-      cs must include("host1:1.bytesRecv: 10")
-      cs must include("host1:1.bytesSent: 11")
-      cs must include("host1:1.messagesRecv: 12")
-      cs must include("host1:1.messagesSent: 13")
-      cs must include("host1:1.connectionOpenAttempt: 14")
-      cs must include("host1:1.connectionOpenSuccess: 15")
-      cs must include("host1:1.connectionOpenTimeout: 16")
-      cs must include("host1:1.connectionCurrent: 17")
-      cs must include("host1:1.connectionExceptions: 18")
-      cs must include("host1:1.connectionReadTimeout: 19")
-      cs must include("host1:1.connectionWriteTimeout: 20")
-      cs must include("host1:1.protocolError: 21")
+      cs must include("server.host1:1.bytesRecv: 10")
+      cs must include("server.host1:1.bytesSent: 11")
+      cs must include("server.host1:1.messagesRecv: 12")
+      cs must include("server.host1:1.messagesSent: 13")
+      cs must include("server.host1:1.connectionOpenAttempt: 14")
+      cs must include("server.host1:1.connectionOpenSuccess: 15")
+      cs must include("server.host1:1.connectionOpenTimeout: 16")
+      cs must include("server.host1:1.connectionCurrent: 17")
+      cs must include("server.host1:1.connectionExceptions: 18")
+      cs must include("server.host1:1.connectionReadTimeout: 19")
+      cs must include("server.host1:1.connectionWriteTimeout: 20")
+      cs must include("server.host1:1.protocolError: 21")
 
-      cs must include("q.bytesRecv: 30")
-      cs must include("q.bytesSent: 31")
-      cs must include("q.messagesRecv: 32")
-      cs must include("q.messagesSent: 33")
-      cs must include("q.kestrelGetTimeouts: 34")
-      cs must include("q.protocolError: 35")
-      cs must include("q.sendCancelled: 36")
+      cs must include("queue.q.bytesRecv: 30")
+      cs must include("queue.q.bytesSent: 31")
+      cs must include("queue.q.messagesRecv: 32")
+      cs must include("queue.q.messagesSent: 33")
+      cs must include("queue.q.kestrelGetTimeouts: 34")
+      cs must include("queue.q.protocolError: 35")
+      cs must include("queue.q.sendCancelled: 36")
     }
 
     "prefix" in {
@@ -92,8 +92,8 @@ object CountersSpec extends SpecBase(1) {
       val cs = grab.countersToString("prefix")
 
       cs must include("prefix.threads:")
-      cs must include("prefix.host1:1.bytesRecv: ")
-      cs must include("prefix.q.bytesRecv: ")
+      cs must include("prefix.server.host1:1.bytesRecv: ")
+      cs must include("prefix.queue.q.bytesRecv: ")
     }
 
     "two queues two hosts" in {
@@ -107,11 +107,11 @@ object CountersSpec extends SpecBase(1) {
 
       cs must include("threads:")
 
-      cs must include("host1:1.bytesRecv: ")
-      cs must include("q1.bytesRecv: ")
+      cs must include("server.host1:1.bytesRecv: ")
+      cs must include("queue.q1.bytesRecv: ")
 
-      cs must include("host2:2.bytesRecv: ")
-      cs must include("q2.bytesRecv: ")
+      cs must include("server.host2:2.bytesRecv: ")
+      cs must include("queue.q2.bytesRecv: ")
     }
   }
 }
