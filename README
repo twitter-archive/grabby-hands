@@ -6,10 +6,10 @@ PRERELEASE 2010/02/25
 SUMMARY
 -------
 A JVM Kestrel client optimized for low-latency consumption of queues
-hosted across a cluster of Kestrel instances.  Connections are
-opened to each Kestrel for each requested queue and each outstanding
-read or write transaction.  Messages are read via Kestrel blocking
-read transactions. Implemented in Scala, but callable from Java.
+hosted across a cluster of Kestrel servers.  Connections are opened
+to each Kestrel for each requested queue and each outstanding read
+or write transaction.  Messages are read via Kestrel blocking read
+transactions. Implemented in Scala, but callable from Java.
 
 
 GOALS
