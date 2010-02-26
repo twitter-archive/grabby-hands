@@ -1,0 +1,18 @@
+<ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="com.twitter" module="grabbyhands" revision="0.2" status="integration" publication="20100225200641" e:buildpackage="com.twitter.grabbyhands" e:testclass="com.twitter.grabbyhands.TestRunner" e:stresstestclass="com.twitter.grabbyhands.StressTestRunner" e:jarclassname="com.twitter.grabbyhands.Main" e:thriftpackage="com.twitter.grabbyhands.gen"/>
+
+  <configurations>
+    
+    <conf name="default" description="normal build"/>
+    
+  </configurations>
+  <dependencies>
+    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.7"/>
+    <dependency org="org.scala-lang" name="scala-library" rev="2.7.7"/>
+    
+    
+
+    <dependency org="junit" name="junit" rev="4.7"/>
+
+  </dependencies>
+</ivy-module>
