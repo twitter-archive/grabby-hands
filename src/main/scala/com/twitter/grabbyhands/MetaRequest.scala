@@ -27,7 +27,7 @@ import java.util.logging.Logger
  * @params server         Kestrel server to query, in host:port format.
  * @params serverCounters Optional statistics collection object.
  */
-//XXX rename arg -- change socket to do so
+// TODO rename arg -- change socket to do so
 protected[grabbyhands] class MetaRequest(serverArg: String,
                                          serverCountersArg: Option[ServerCounters]) extends Socket {
   server = serverArg

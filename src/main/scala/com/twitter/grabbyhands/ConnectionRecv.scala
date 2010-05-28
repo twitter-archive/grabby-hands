@@ -38,9 +38,8 @@ protected[grabbyhands] class ConnectionRecv(
   protected val maxMessageBytes = grabbyHands.config.maxMessageBytes
   val response = ByteBuffer.allocate(maxMessageBytes + 100)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
-// XXX is this rewind() needed??
-// XXX is this rewind() needed??
-// XXX is this rewind() needed??
+
+  // TODO: is this rewind() needed?
   expectEnd.rewind()
   protected val expectHeader = ByteBuffer.wrap(("VALUE " + queueName + " 0 ").getBytes)
 
