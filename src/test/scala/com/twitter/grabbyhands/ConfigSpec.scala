@@ -128,5 +128,16 @@ object ConfigSpec extends SpecBase(2) {
       queues.size must be_==(1)
       config.queues.get("q1") must beSome[ConfigQueue]
     }
+
+    "set transactional" in {
+      val config = new Config()
+      config.addServer("host:1")
+      val queues = config.addQueues(List("q1"))
+      config.recvTransactional = true
+
+      queues.size must be_==(1)
+      config.recvTransactional must be_==(true)
+    }
+
   }
 }

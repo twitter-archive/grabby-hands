@@ -34,12 +34,18 @@ public class JavaTest {
     Config config = new Config();
     config.addServers(servers);
 
+    assertFalse(config.getRecvTransactional());
+    assertFalse(config.getSendTransactional());
+    config.setRecvTransactional(true);
+
     config.setRecvNumConnections(4);
     config.setSendNumConnections(5);
     assertEquals(config.recvNumConnections(), 4);
     assertEquals(config.getRecvNumConnections(), 4);
     assertEquals(config.sendNumConnections(), 5);
     assertEquals(config.getSendNumConnections(), 5);
+    assertTrue(config.getRecvTransactional());
+    assertFalse(config.getSendTransactional());
 
     config.setMaxMessageBytes(100);
     assertEquals(config.getMaxMessageBytes(), 100);
@@ -49,6 +55,7 @@ public class JavaTest {
     ConfigQueue configQueue = queueConfigs.get(queues.get(0));
     assertEquals(configQueue.recvNumConnections(), 4);
     assertEquals(configQueue.getRecvNumConnections(), 4);
+    assertTrue(configQueue.getRecvTransactional());
 
     assertEquals(configQueue.recvQueueDepth(), 4);
     assertEquals(configQueue.getRecvQueueDepth(), 4);
@@ -63,10 +70,12 @@ public class JavaTest {
   @Test public void testWriteRead() {
     Config config = new Config();
     config.addServers(servers);
+    config.setRecvTransactional(true);
     config.addQueues(queues);
+
     GrabbyHands grabbyHands = new GrabbyHands(config);
     BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
-    BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
+    BlockingQueue<Read> recv = grabbyHands.getRecvTransQueue(queue);
 
     String sendText = "text";
     Write write = new Write(sendText);
@@ -74,13 +83,31 @@ public class JavaTest {
     assertFalse(write.cancelled());
     try {
       send.put(write);
-      ByteBuffer buffer = recv.poll(4, TimeUnit.SECONDS);
-      assertNotNull(buffer);
+      Read read = recv.poll(4, TimeUnit.SECONDS);
+      assertNotNull(read);
 
-      String recvText = new String(buffer.array());
+      String recvText = new String(read.getMessage().array());
       assertEquals(recvText, sendText);
+      assertFalse(read.completed());
+      assertFalse(read.cancelled());
 
-      assertTrue(write.written());
+      send.put(new Write(read));
+      read.awaitComplete(4, TimeUnit.SECONDS);
+      assertTrue(read.completed());
+      assertFalse(read.cancelled());
+
+      read = recv.poll(4, TimeUnit.SECONDS);
+      assertNotNull(read);
+      read.close(false);
+
+      read = recv.poll(4, TimeUnit.SECONDS);
+      assertNotNull(read);
+      read.close(true);
+
+      read = recv.poll(4, TimeUnit.SECONDS);
+      assertNull(read);
+
+
     } catch (InterruptedException e) {
       fail("caught unexpected exception");
     }
