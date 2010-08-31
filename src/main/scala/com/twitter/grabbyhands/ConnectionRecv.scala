@@ -35,8 +35,8 @@ protected[grabbyhands] class ConnectionRecv(
   val transactionRecvQueue = queue.transRecvQueue
 
   val command = new StringBuffer("get ")
-  command.append(queueName).append("/t=")
-  command.append(grabbyHands.config.kestrelReadTimeoutMs)
+  command.append(queueName)
+  command.append("/t=").append(grabbyHands.config.kestrelReadTimeoutMs)
   if(queue.transactional) command.append("/close/open")
   command.append("\r\n")
 
