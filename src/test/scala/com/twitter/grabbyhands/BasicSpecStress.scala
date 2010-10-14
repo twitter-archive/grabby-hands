@@ -32,7 +32,7 @@ object BasicSpecStress extends SpecBase(50) {
     config.recvQueueDepth = 225
     config.reconnectHolddownMs = 50
     testNumQueues must be_<=(numQueues)
-    val testQueues = queues.slice(0, testNumQueues).force
+    val testQueues = queues.slice(0, testNumQueues).toArray
     val queueConfig = config.addQueues(testQueues)
 
     ctor()

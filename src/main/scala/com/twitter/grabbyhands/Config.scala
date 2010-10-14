@@ -59,7 +59,7 @@ class Config() extends ConfigConnection {
   /** Adds a new queue, inheriting the current parameters. */
   def addQueue(name: String): ConfigQueue = {
     val queue = new ConfigQueue(name, this)
-    queues + (name -> queue)
+    queues += (name -> queue)
     queue
   }
 
@@ -68,9 +68,9 @@ class Config() extends ConfigConnection {
     val rv = new HashMap[String, ConfigQueue]
     for (name <- names) {
       val queue = addQueue(name)
-      rv + (name -> addQueue(name))
+      rv += (name -> addQueue(name))
     }
-    rv.readOnly
+    scala.collection.immutable.Map() ++ rv
   }
 
   /** Adds several queues, inheriting the current parameters. */

@@ -47,7 +47,7 @@ object LifecycleSpec extends SpecBase(3) {
       config.addServers(hosts)
       config.sendNumConnections = 3
       config.recvNumConnections = 4
-      val queues2 = queues.slice(0, 2).force
+      val queues2 = queues.slice(0, 2).toArray
       queues2.size  must be_==(2)
       config.addQueues(queues2)
       val threads =
@@ -63,7 +63,7 @@ object LifecycleSpec extends SpecBase(3) {
       val config = new Config()
       config.addServer(host + ":" + port)
       config.recvNumConnections = 0
-      config.addQueues(queues.slice(0, 1).force)
+      config.addQueues(queues.slice(0, 1).toArray)
       config.queues.size must be_==(1)
 
       grab = new GrabbyHands(config)
@@ -76,7 +76,7 @@ object LifecycleSpec extends SpecBase(3) {
       val config = new Config()
       config.addServer(host + ":" + port)
       config.sendNumConnections = 0
-      config.addQueues(queues.slice(0, 1).force)
+      config.addQueues(queues.slice(0, 1).toArray)
       config.queues.size must be_==(1)
 
       grab = new GrabbyHands(config)
@@ -91,7 +91,7 @@ object LifecycleSpec extends SpecBase(3) {
       config.addServer(host + ":" + port)
       config.recvNumConnections = 0
       config.sendNumConnections = 0
-      config.addQueues(queues.slice(0, 1).force)
+      config.addQueues(queues.slice(0, 1).toArray)
       config.queues.size must be_==(1)
 
       grab = new GrabbyHands(config)
