@@ -9,7 +9,7 @@
       <include name="**/*.scala" />
     </scalac>
 
-    <javac srcdir="${test.source.dir}/java" destdir="${target.dir}/test-classes" deprecation="on" debug="true" debuglevel="lines,source">
+    <javac srcdir="${test.source.dir}/java" destdir="${target.dir}/test-classes" deprecation="on" debug="true" debuglevel="lines,source" includeantruntime="false">
       <classpath>
         <path refid="test.path" />
         <pathelement location="${target.dir}/classes" />
