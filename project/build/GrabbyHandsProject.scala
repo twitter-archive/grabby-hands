@@ -6,8 +6,7 @@ class GrabbyHandsProject(info: ProjectInfo) extends StandardProject(info) with S
     case "2.7.7" => "org.scala-tools.testing" % "specs" % "1.6.2.1"
     case _ => "org.scala-tools.testing" %% "specs" % "1.6.5"
   }
-  val vscaladoc = "org.scala-tools" % "vscaladoc" % "1.1-md-3"
-  val junit = "junit" % "junit" % "4.7"
+  val junitInterface = "com.novocode" % "junit-interface" % "0.5" % "test->default"
 
   override def pomExtra =
     <licenses>
