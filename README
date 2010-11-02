@@ -1,7 +1,8 @@
 GRABBY HANDS
 ============
 
-v1.0 2010/05/27
+v1.1 2010/11/02 - Add SBT and Scala2.8 support
+v1.0 2010/05/27 - First Release
 
 SUMMARY
 -------
@@ -153,14 +154,30 @@ locally.  Excessive queue depth may cause undesired uncommitted read
 loss upon local process exit.
 
 
+BUILD
+-----
+
+With ant:
+% ant package
+
+With sbt:
+% sbt update
+% sbt package
+
+If you switch between ant and sbt, be sure to clean.
+
 TESTS
 -----
 All tests assume a kestrel process running on localhost:22133.
 
-% ant test runs the normal tests that are run during ant package.
-% ant stress will run a small stress test suite and give some performance numbers.
-% ant javatest will run the java example.
+With ant:
+% ant test (runs the normal tests that are run during ant package)
+% ant stress (runs a small stress test suite and give some performance numbers)
+% ant javatest (runs the java example)
 
+With sbt:
+% sbt test (scala tests and java example)
+% sbt stress
 
 LICENSE
 -------
