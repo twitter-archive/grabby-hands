@@ -36,5 +36,20 @@ class GrabbyHandsProject(info: ProjectInfo) extends StandardProject(info) with S
     }
   }
 
-  override def testOptions = ExcludeTests("com.twitter.grabbyhands.SpecBase" :: "com.twitter.grabbyhands.BasicSpecStress" :: Nil) :: super.testOptions.toList
+  def testFilter(include: Boolean, testRegex: String)(testName: String) = {
+    val nameMatch = testRegex.r.findFirstIn(testName) match {
+      case Some(s) => true
+      case _ => false
+    }
+    if (nameMatch) {
+      include
+    } else {
+      !include
+    }
+  }
+
+  // test should NOT include stress tests
+  override def testAction = defaultTestTask(TestFilter(testFilter(false, "Stress$|Base$")) :: testOptions.toList)
+  // stress should ONLY include stress tests
+  lazy val stress = defaultTestTask(TestFilter(testFilter(true, "Stress$")) :: testOptions.toList) describedAs "run stress tests"
 }
