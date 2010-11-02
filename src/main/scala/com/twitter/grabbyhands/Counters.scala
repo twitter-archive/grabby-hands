@@ -26,8 +26,8 @@ class Counters() {
 
   def toMap(): Map[String, Long] = {
     val rv = new HashMap[String, Long]()
-    rv + ("threads" -> threads.get)
-    rv + ("pausedThreads" -> pausedThreads.get)
-    rv.readOnly
+    rv += ("threads" -> threads.get)
+    rv += ("pausedThreads" -> pausedThreads.get)
+    scala.collection.immutable.Map() ++ rv
   }
 }
