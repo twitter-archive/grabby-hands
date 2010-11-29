@@ -107,14 +107,8 @@ public class JavaTest {
       assertNotNull(read);
       read.close(false);
 
-      read = recv.poll(4, TimeUnit.SECONDS);
-      assertNotNull(read);
-      read.close(true);
-
-      read = recv.poll(4, TimeUnit.SECONDS);
+      read = recv.poll(1, TimeUnit.SECONDS);
       assertNull(read);
-
-
     } catch (InterruptedException e) {
       fail("caught unexpected exception");
     }
