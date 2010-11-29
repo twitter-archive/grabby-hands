@@ -26,8 +26,11 @@ protected case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
   protected[grabbyhands] val counters = new QueueCounters()
   protected[grabbyhands] val recvQueue = new LinkedBlockingQueue[ByteBuffer](
     config.recvQueueDepth)
+  protected[grabbyhands] val transRecvQueue = new LinkedBlockingQueue[Read](
+    config.recvQueueDepth)
   protected[grabbyhands] val sendQueue = new LinkedBlockingQueue[Write](
     config.sendQueueDepth)
+  val transactional = config.getRecvTransactional()
   val name = config.name
 
   log.fine("Connection threads starting")

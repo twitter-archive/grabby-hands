@@ -20,7 +20,9 @@ import java.nio.ByteBuffer
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 /** Wraps outgoing messages. */
-class Write(val message: ByteBuffer) {
+class Write(val message: ByteBuffer, val watcher: Boolean => Unit) {
+  def this(read:Read ) = this(read.message, read.close(_:Boolean))
+  def this(message:ByteBuffer ) = this(message, (Boolean) => false)
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes))
   protected val writtenLatch = new CountDownLatch(1)
@@ -31,28 +33,37 @@ class Write(val message: ByteBuffer) {
     writtenLatch.getCount == 0
   }
 
+  def getMessage(): ByteBuffer = message
+  def getWatcher(): Function[Boolean, Unit] = watcher
+
   /** Returns only once the message has been sent to a Kestrel server or timeout occurs. */
   def awaitWrite(timeout: Int, units: TimeUnit) {
     writtenLatch.await(timeout, units)
   }
 
-  /** Returns only once hte message has been sent to a Kestrel. */
+  /** Returns only once the message has been sent to a Kestrel. */
   def awaitWrite() {
     writtenLatch.await(99999, TimeUnit.DAYS)
   }
 
   protected[grabbyhands] def write() {
+    watcher(true)
     writtenLatch.countDown()
   }
 
   /** Cancels a write waiting in the local queue. */
   def cancel() {
     cancelLatch.countDown()
+    watcher(false)
   }
 
   /** Returns true if write was cancelled before it could be sent to a Kestrel server. */
   def cancelled(): Boolean = {
     cancelLatch.getCount == 0
+  }
+
+  def close() {
+    write()
   }
 
 }

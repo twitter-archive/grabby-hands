@@ -100,5 +100,19 @@ object LifecycleSpec extends SpecBase(3) {
       grab.counters.threads.get must be_==(0)
     }
 
+    "test transactional" in {
+      val config = new Config()
+      config.addServer(host + ":" + port)
+      config.sendNumConnections = 1
+      config.recvTransactional = true;
+      config.addQueues(queues.slice(0, 1).force)
+      config.queues.size must be_==(1)
+
+      grab = new GrabbyHands(config)
+      grab.counters.threads.get must be_==(2)
+
+      grab.getRecvTransQueue(queues(0))
+    }
+
   }
 }
