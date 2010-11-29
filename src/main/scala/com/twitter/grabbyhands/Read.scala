@@ -20,7 +20,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 /** Wraps outgoing messages. */
-class Read(val message: ByteBuffer, val connection:ConnectionRecv )
+class Read(val message: ByteBuffer, val connection: ConnectionRecv)
 {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()), null)
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes), null)
@@ -29,7 +29,6 @@ class Read(val message: ByteBuffer, val connection:ConnectionRecv )
 
   def getMessage(): ByteBuffer = message
   def getConnection(): ConnectionRecv = connection
-
 
   def awaitComplete(timeout: Int, units: TimeUnit) {
     completedLatch.await(timeout, units)
@@ -42,12 +41,15 @@ class Read(val message: ByteBuffer, val connection:ConnectionRecv )
 
   /** Returns true if transaction is completed or aborted */
   def completed(): Boolean = {
-    completedLatch.getCount == 0
+    completedLatch.getCount() == 0
   }
 
   protected[grabbyhands] def close(success:Boolean) {
-    if(success) completedLatch.countDown()
-    else abort()
+    if (success) {
+      completedLatch.countDown()
+    } else {
+      abort()
+    }
   }
 
   /** Cancels a write waiting in the local queue. */
@@ -60,5 +62,4 @@ class Read(val message: ByteBuffer, val connection:ConnectionRecv )
   def cancelled(): Boolean = {
     abortLatch.getCount == 0
   }
-
 }

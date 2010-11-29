@@ -37,7 +37,7 @@ protected[grabbyhands] class ConnectionRecv(
   val command = new StringBuffer("get ")
   command.append(queueName)
   command.append("/t=").append(grabbyHands.config.kestrelReadTimeoutMs)
-  if(queue.transactional) command.append("/close/open")
+  if (queue.transactional) command.append("/close/open")
   command.append("\r\n")
 
   val abortCommand = new StringBuffer("get ")
@@ -197,9 +197,7 @@ protected[grabbyhands] class ConnectionRecv(
   def abortRead() {
     // Send request
     abortRequest.rewind()
-    if (!writeBuffer(abortRequest)) {
-      return false
-    }
+    writeBuffer(abortRequest)
   }
 
   // readTimeoutMs is assumed to be the saftey factor accounting for typical glitches, etc.

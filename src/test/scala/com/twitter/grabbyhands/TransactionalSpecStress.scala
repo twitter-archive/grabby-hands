@@ -21,9 +21,10 @@ import java.util.concurrent.{BlockingQueue,TimeUnit}
 object TransactionalSpecStress extends SpecBase(50) {
 
   def transactionalStress(testMessages:Int, testNumQueues: Int,
-                  testConnectionsPerServer: Int, testLength: Int, serial: Boolean) {
-    log.fine("testNumQueues " + testNumQueues + " testConnectionsPerServer " +
-             testConnectionsPerServer + " serial " + serial)
+                          testConnectionsPerServer: Int, testLength: Int, serial: Boolean) {
+    log.fine(
+      "testNumQueues " + testNumQueues + " testConnectionsPerServer " + testConnectionsPerServer +
+      " serial " + serial)
     testMessages % testNumQueues must be_==(0)
     config = new Config()
     config.addServer(host + ":" + port)
@@ -33,7 +34,7 @@ object TransactionalSpecStress extends SpecBase(50) {
     config.reconnectHolddownMs = 50
     config.recvTransactional = true
     testNumQueues must be_<=(numQueues)
-    val testQueues = queues.slice(0, testNumQueues).force
+    val testQueues = queues.slice(0, testNumQueues).toArray
     val queueConfig = config.addQueues(testQueues)
 
     ctor()
@@ -63,8 +64,9 @@ object TransactionalSpecStress extends SpecBase(50) {
     }
     var endMs = System.currentTimeMillis
     var deltaMs = endMs - startMs
-    log.info("enqueue " + testMessages + " in " + deltaMs + " ms, " +
-             ((1000*testMessages) / deltaMs) + " messages/sec")
+    log.info(
+      "enqueue " + testMessages + " in " + deltaMs + " ms, " + ((1000*testMessages) / deltaMs) +
+      " messages/sec")
 
     startMs = System.currentTimeMillis
     for (idx <- 1 to testMessages) {
@@ -79,8 +81,9 @@ object TransactionalSpecStress extends SpecBase(50) {
     endMs = System.currentTimeMillis
     deltaMs = endMs- startMs
 
-    log.info("dequeue " + testMessages + " in " + deltaMs + " ms, " +
-             ((1000*testMessages) / deltaMs) + " messages/sec")
+    log.info(
+      "dequeue " + testMessages + " in " + deltaMs + " ms, " + ((1000*testMessages) / deltaMs) +
+      " messages/sec")
   }
 
   "basicstress" should {

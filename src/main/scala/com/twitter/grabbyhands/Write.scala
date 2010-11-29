@@ -21,8 +21,8 @@ import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 /** Wraps outgoing messages. */
 class Write(val message: ByteBuffer, val watcher: Boolean => Unit) {
-  def this(read:Read ) = this(read.message, read.close(_:Boolean))
-  def this(message:ByteBuffer ) = this(message, (Boolean) => false)
+  def this(read:Read) = this(read.message, read.close(_:Boolean))
+  def this(message:ByteBuffer) = this(message, (Boolean) => false)
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()))
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes))
   protected val writtenLatch = new CountDownLatch(1)

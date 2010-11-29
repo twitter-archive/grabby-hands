@@ -105,7 +105,7 @@ object LifecycleSpec extends SpecBase(3) {
       config.addServer(host + ":" + port)
       config.sendNumConnections = 1
       config.recvTransactional = true;
-      config.addQueues(queues.slice(0, 1).force)
+      config.addQueues(queues.slice(0, 1).toArray)
       config.queues.size must be_==(1)
 
       grab = new GrabbyHands(config)
