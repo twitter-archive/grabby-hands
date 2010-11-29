@@ -23,12 +23,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.List;
 import static org.junit.Assert.*;
-import org.junit.Test;
+import org.junit.*;
 
 public class JavaTest {
   protected List<String> servers = Arrays.asList("localhost:22133");
   protected String queue = "grabby_javatest";
   protected List<String> queues = Arrays.asList(queue);
+  protected GrabbyHands grabbyHands = null;
+
+  @Before @After public void cleanup() {
+    if (grabbyHands != null) {
+      grabbyHands.join();
+      grabbyHands = null;
+    }
+  }
 
   @Test public void testCreate() {
     Config config = new Config();
@@ -64,7 +72,7 @@ public class JavaTest {
     Config config = new Config();
     config.addServers(servers);
     config.addQueues(queues);
-    GrabbyHands grabbyHands = new GrabbyHands(config);
+    grabbyHands = new GrabbyHands(config);
     BlockingQueue<Write> send = grabbyHands.getSendQueue(queue);
     BlockingQueue<ByteBuffer> recv = grabbyHands.getRecvQueue(queue);
 

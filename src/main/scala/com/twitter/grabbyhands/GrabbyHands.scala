@@ -32,16 +32,16 @@ class GrabbyHands(val config: Config) {
   val counters = new Counters()
   val serverCounters: Map[String, ServerCounters] = {
     val rv = new HashMap[String, ServerCounters]()
-    config.servers.foreach(server => rv + (server -> new ServerCounters()))
-    rv.readOnly
+    config.servers.foreach(server => rv += (server -> new ServerCounters()))
+    scala.collection.immutable.Map() ++ rv
   }
 
   protected[grabbyhands] val queues = Queue.factory(this)
 
   val queueCounters: Map[String, QueueCounters] = {
     val rv = new HashMap[String, QueueCounters]()
-    queues.values.foreach(queue => rv + (queue.name -> queue.counters))
-    rv.readOnly
+    queues.values.foreach(queue => rv += (queue.name -> queue.counters))
+    scala.collection.immutable.Map() ++ rv
   }
 
   log.fine("grabbyhands started")
@@ -123,7 +123,7 @@ class GrabbyHands(val config: Config) {
   /** Returns counters as a map */
   def countersToMap(): Map[String, Long] = {
     val rv = new HashMap[String, Long]()
-    rv ++ counters.toMap()
+    rv ++= counters.toMap()
     for ((server, serverCounters) <- serverCounters) {
       for ((name, value) <- serverCounters.toMap) {
         rv += "server." + server + "." + name -> value
@@ -134,7 +134,7 @@ class GrabbyHands(val config: Config) {
         rv += "queue." + queue + "." + name -> value
       }
     }
-    rv.readOnly
+    scala.collection.immutable.Map() ++ rv
   }
 }
 

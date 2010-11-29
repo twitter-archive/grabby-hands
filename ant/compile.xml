@@ -31,7 +31,7 @@
 
   <macrodef name="compile-generated-thrift">
     <sequential>
-      <javac srcdir="${thrift.target.dir}" destdir="${target.dir}/classes" deprecation="on">
+      <javac srcdir="${thrift.target.dir}" destdir="${target.dir}/classes" deprecation="on" includeantruntime="false">
         <classpath>
           <path refid="deps.path" />
         </classpath>
