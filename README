@@ -1,7 +1,7 @@
 GRABBY HANDS
 ============
 
-v1.1 2010/11/02 - Add SBT and Scala2.8 support
+v1.1 2010/11/29 - Add SBT, Scala2.8 and Maven support
 v1.0 2010/05/27 - First Release
 
 SUMMARY
@@ -156,7 +156,6 @@ loss upon local process exit.
 
 BUILD
 -----
-
 With ant:
 % ant package
 
@@ -165,6 +164,7 @@ With sbt:
 % sbt package
 
 If you switch between ant and sbt, be sure to clean.
+
 
 TESTS
 -----
@@ -178,6 +178,11 @@ With ant:
 With sbt:
 % sbt test (scala tests and java example)
 % sbt stress
+
+BINARIES
+--------
+http://maven.twttr.com
+
 
 LICENSE
 -------
