@@ -1,6 +1,7 @@
 GRABBY HANDS
 ============
 
+v1.2 2010/11/29 - Merge in transactional read and write support from jreichhold.
 v1.1 2010/11/29 - Add SBT, Scala2.8 and Maven support
 v1.0 2010/05/27 - First Release
 
@@ -60,6 +61,8 @@ be made.
 Immutable configuration. The entire configuration is passed in at
 instantiation and cannot be modified. Safety and simplicity over
 flexibility and complexity.
+
+Support for Kestrel transactional reads and writes.
 
 Counters for everything.
 
