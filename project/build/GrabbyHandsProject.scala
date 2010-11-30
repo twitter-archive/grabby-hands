@@ -3,8 +3,8 @@ import com.twitter.sbt._
 
 class GrabbyHandsProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher{
   val specs     = buildScalaVersion match {
-    case "2.7.7" => "org.scala-tools.testing" % "specs" % "1.6.2.1"
-    case _ => "org.scala-tools.testing" %% "specs" % "1.6.5"
+    case "2.7.7" => "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
+    case _ => "org.scala-tools.testing" %% "specs" % "1.6.5" % "test"
   }
   val junitInterface = "com.novocode" % "junit-interface" % "0.5" % "test->default"
 
