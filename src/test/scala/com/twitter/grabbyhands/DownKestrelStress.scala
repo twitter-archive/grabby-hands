@@ -63,7 +63,7 @@ object DownKestrelSpecStress extends SpecBase(50) {
 
 
   "downkestrelstress" should {
-    val seconds = 60
+    val seconds = 15
 
     doBefore {
       noDetailedDiffs()  // else large string compare goes berzerk
@@ -82,11 +82,6 @@ object DownKestrelSpecStress extends SpecBase(50) {
       }
     }
 
-    "gromit unused port" in {
-      connStress("gromit", 22199)
-      Thread.sleep(seconds * 1000)
-    }
-
     "localhost unused port" in {
       connStress("localhost", 22199)
       Thread.sleep(seconds * 1000)
@@ -97,6 +92,9 @@ object DownKestrelSpecStress extends SpecBase(50) {
       Thread.sleep(seconds * 1000)
     }
 
-
+    "gromit unused port" in {
+      connStress("gromit", 22199)
+      Thread.sleep(seconds * 1000)
+    }
   }
 }
