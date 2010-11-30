@@ -31,8 +31,8 @@ class GrabbyHandsProject(info: ProjectInfo) extends StandardProject(info) with S
     case _ => {
       super.compileOptions ++ Seq(Unchecked) ++
       compileOptions("-encoding", "utf8") ++
-      compileOptions("-deprecation") ++
-      compileOptions("-Xmigration")
+      compileOptions("-deprecation")
+      // ++ compileOptions("-Xmigration")
     }
   }
 

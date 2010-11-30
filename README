@@ -1,6 +1,7 @@
 GRABBY HANDS
 ============
 
+v1.3 2010/11/30 - Fix a leaking file descriptor on down Kestrel from Linux.
 v1.2 2010/11/29 - Merge in transactional read and write support from jreichhold.
 v1.1 2010/11/29 - Add SBT, Scala2.8 and Maven support
 v1.0 2010/05/27 - First Release
