@@ -22,6 +22,7 @@ import scala.reflect.BeanProperty
 /** Configures a send or receive direction. */
 protected[grabbyhands] class ConfigDirection(name: String) extends Cloneable {
   private var _numConnections = 1
+  private var _transactional = false
 
   /**
    * Configures the depth of the internal queue and thus the number of outstanding messages.
@@ -30,6 +31,7 @@ protected[grabbyhands] class ConfigDirection(name: String) extends Cloneable {
   @BeanProperty var queueDepth = 1
 
   def numConnections: Int = _numConnections
+  def transactional: Boolean = _transactional
 
   def numConnections_=(value: Int) {
     queueDepth *= value
@@ -37,9 +39,15 @@ protected[grabbyhands] class ConfigDirection(name: String) extends Cloneable {
     _numConnections = value
  }
 
+  def transactional_=(value: Boolean) = _transactional = value
+
   /** Configures the number of connections, and thus parallel transactions. */
   def setNumConnections(value: Int) = numConnections = value
   def getNumConnections(): Int = numConnections
+
+  /** Configures if this queue is transactional. */
+  def setTransactional(value: Boolean) = transactional = value
+  def getTransactional(): Boolean = transactional
 
   override def toString(): String = {
     name + "NumConnections=" + numConnections + " " + name + "QueueDepth=" + queueDepth

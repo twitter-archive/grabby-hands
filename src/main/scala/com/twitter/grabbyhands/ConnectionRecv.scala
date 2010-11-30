@@ -32,9 +32,21 @@ protected[grabbyhands] class ConnectionRecv(
                          connectionName,
                          server) {
   val recvQueue = queue.recvQueue
+  val transactionRecvQueue = queue.transRecvQueue
 
-  protected val request = ByteBuffer.wrap((
-    "get " + queueName + "/t=" + grabbyHands.config.kestrelReadTimeoutMs + "\r\n").getBytes)
+  val command = new StringBuffer("get ")
+  command.append(queueName)
+  command.append("/t=").append(grabbyHands.config.kestrelReadTimeoutMs)
+  if (queue.transactional) command.append("/close/open")
+  command.append("\r\n")
+
+  val abortCommand = new StringBuffer("get ")
+  abortCommand.append(queueName).append("/abort")
+  abortCommand.append("\r\n")
+
+  protected val abortRequest = ByteBuffer.wrap((abortCommand.toString()).getBytes)
+
+  protected val request = ByteBuffer.wrap((command.toString()).getBytes)
   protected val maxMessageBytes = grabbyHands.config.maxMessageBytes
   val response = ByteBuffer.allocate(maxMessageBytes + 100)
   protected val expectEnd = ByteBuffer.wrap("END\r\n".getBytes)
@@ -170,10 +182,22 @@ protected[grabbyhands] class ConnectionRecv(
     queueCounters.messagesRecv.incrementAndGet()
     queueCounters.bytesRecv.addAndGet(payloadLength)
 
-    recvQueue.offer(payload, 999999, TimeUnit.HOURS)
+    if (queue.transactional) {
+      val read = new Read(payload, this)
+      transactionRecvQueue.offer(read, 99999, TimeUnit.HOURS)
+      read.awaitComplete()
+    } else {
+      recvQueue.offer(payload, 999999, TimeUnit.HOURS)
+    }
     if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " message read")
 
     true
+  }
+
+  def abortRead() {
+    // Send request
+    abortRequest.rewind()
+    writeBuffer(abortRequest)
   }
 
   // readTimeoutMs is assumed to be the saftey factor accounting for typical glitches, etc.

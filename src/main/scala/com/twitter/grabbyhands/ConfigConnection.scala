@@ -50,6 +50,16 @@ class ConfigConnection(sendConfig: ConfigDirection, recvConfig: ConfigDirection)
   def getRecvQueueDepth(): Int = recvQueueDepth
   def setRecvQueueDepth(value: Int) = recvQueueDepth = value
 
+  def sendTransactional: Boolean = send.transactional
+  def sendTransactional_=(value: Boolean) = send.transactional = value
+  def getSendTransactional(): Boolean = sendTransactional
+  def setSendTransactional(value: Boolean) = sendTransactional = value
+
+  def recvTransactional: Boolean = recv.transactional
+  def recvTransactional_=(value: Boolean) = recv.transactional = value
+  def getRecvTransactional(): Boolean = recvTransactional
+  def setRecvTransactional(value: Boolean) = recvTransactional = value
+
   override def toString(): String = send.toString() + " " + recv.toString()
 
   override def clone(): ConfigConnection = new ConfigConnection(send.clone(), recv.clone())
