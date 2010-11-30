@@ -27,6 +27,7 @@ protected[grabbyhands] trait Socket {
   var socket: SocketChannel = _
   var opened = false
   var readWriteSelector: Selector = _
+  var connectSelector: Selector = _
   var server: String = _
   var serverCounters: ServerCounters = _
   var socketName: String = _
@@ -45,17 +46,19 @@ protected[grabbyhands] trait Socket {
     socket.socket().setTcpNoDelay(true)
     val hostPort = server.split(":")
     socket.connect(new InetSocketAddress(hostPort(0), Integer.parseInt(hostPort(1))))
-    val connectSelector = Selector.open()
+    connectSelector = Selector.open()
     socket.register(connectSelector, SelectionKey.OP_CONNECT)
 
     if (connectSelector.select(connectTimeoutMs) == 0 || !socket.finishConnect()) {
       log.warning(socketName + " open socket timeout")
       connectSelector.close()
+      connectSelector = null
       socket.close()
       serverCounters.connectionOpenTimeout.incrementAndGet()
       throw new Exception("connect socket timeout " + server)
     }
     connectSelector.close()
+    connectSelector = null
     readWriteSelector = Selector.open()
     serverCounters.connectionOpenSuccess.incrementAndGet()
     opened = true
@@ -168,6 +171,10 @@ protected[grabbyhands] trait Socket {
     if (readWriteSelector != null) {
       readWriteSelector.close()
       readWriteSelector = null
+    }
+    if (connectSelector != null) {
+      connectSelector.close()
+      connectSelector = null
     }
     if (socket != null) {
       if (opened) {
