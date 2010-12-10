@@ -30,10 +30,11 @@ protected case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
     config.recvQueueDepth)
   protected[grabbyhands] val sendQueue = new LinkedBlockingQueue[Write](
     config.sendQueueDepth)
-  val transactional = config.getRecvTransactional()
   val name = config.name
+  val transactional = config.getRecvTransactional()
+  log.fine("queue " + name + " transactional " + transactional)
 
-  log.fine("Connection threads starting")
+  log.fine("queue " + name + " connection threads starting")
   protected val connections: Array[ConnectionBase] = {
     val rv = new ArrayBuffer[ConnectionBase]()
     for (server <- grabbyHands.config.servers) {
@@ -56,7 +57,7 @@ protected case class Queue(grabbyHands: GrabbyHands, config: ConfigQueue) {
   }
 
   connections.foreach(connection => connection.started())
-  log.fine("All connection threads running")
+  log.fine("queueu " + name + " all connection threads running")
 
   def getCounters(): QueueCounters = {
     counters

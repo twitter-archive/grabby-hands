@@ -40,11 +40,11 @@ protected[grabbyhands] class ConnectionRecv(
   if (queue.transactional) command.append("/close/open")
   command.append("\r\n")
 
-  val abortCommand = new StringBuffer("get ")
-  abortCommand.append(queueName).append("/abort")
-  abortCommand.append("\r\n")
+  val cancelCommand = new StringBuffer("get ")
+  cancelCommand.append(queueName).append("/abort")
+  cancelCommand.append("\r\n")
 
-  protected val abortRequest = ByteBuffer.wrap((abortCommand.toString()).getBytes)
+  protected val cancelRequest = ByteBuffer.wrap((cancelCommand.toString()).getBytes)
 
   protected val request = ByteBuffer.wrap((command.toString()).getBytes)
   protected val maxMessageBytes = grabbyHands.config.maxMessageBytes
@@ -185,6 +185,7 @@ protected[grabbyhands] class ConnectionRecv(
     if (queue.transactional) {
       val read = new Read(payload, this)
       transactionRecvQueue.offer(read, 99999, TimeUnit.HOURS)
+      if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " awaiting transaction close")
       read.awaitComplete()
     } else {
       recvQueue.offer(payload, 999999, TimeUnit.HOURS)
@@ -194,10 +195,12 @@ protected[grabbyhands] class ConnectionRecv(
     true
   }
 
-  def abortRead() {
+  def cancelRead() {
+    if (log.isLoggable(Level.FINEST)) log.finest(connectionName + " cancel read")
     // Send request
-    abortRequest.rewind()
-    writeBuffer(abortRequest)
+    cancelRequest.rewind()
+    writeBuffer(cancelRequest)
+    queueCounters.recvCancelled.incrementAndGet()
   }
 
   // readTimeoutMs is assumed to be the saftey factor accounting for typical glitches, etc.
