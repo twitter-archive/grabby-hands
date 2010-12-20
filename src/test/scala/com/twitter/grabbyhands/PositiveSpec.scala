@@ -323,7 +323,7 @@ object PositiveSpec extends SpecBase(4) {
       }
     }
 
-    "cancel a message" in {
+    "cancel a write" in {
       ctor()
 
       grab.pause()
@@ -400,6 +400,65 @@ object PositiveSpec extends SpecBase(4) {
         recvText(idx) = new String(buffer(idx).array)
         recvText(idx) must be_==(sendText(idx))
       }
+    }
+
+    "transactional reads" in {
+      config = new Config()
+      config.addServer(host + ":" + port)
+      config.maxMessageBytes = shortMessageMax
+      config.recvTransactional = true
+      config.addQueue(queues(0))
+      ctor()
+      grab must notBeNull
+      val send = grab.getSendQueue(queue)
+      val recv = grab.getRecvTransQueue(queue)
+
+      val emptyRead = recv.poll(1, TimeUnit.SECONDS)
+      emptyRead must beNull
+
+      val emptyCount = grab.serverCounters(hostPort)
+      emptyCount.protocolError.get must be_==(0)
+      emptyCount.connectionWriteTimeout.get must be_==(0)
+      emptyCount.connectionReadTimeout.get must be_==(0)
+      emptyCount.messagesSent.get must be_==(0)
+      emptyCount.bytesSent.get must be_==(0)
+      emptyCount.messagesRecv.get must be_==(0)
+      emptyCount.bytesRecv.get must be_==(0)
+
+      val sendText = "text"
+      val write = new Write(sendText)
+      send.put(write)
+
+      val cancel = recv.poll(2, TimeUnit.SECONDS)
+      write.written must beTrue
+      cancel must notBeNull
+      cancel.cancelled must beFalse
+      cancel.open must beTrue
+
+      val cancelText = new String(cancel.message.array)
+      cancelText must be_==(sendText)
+
+      grab.queueCounters(queue).sendCancelled.get must be_==(0)
+      grab.queueCounters(queue).recvCancelled.get must be_==(0)
+
+      cancel.cancel
+      cancel.cancelled must beTrue
+      cancel.open must beFalse
+      grab.queueCounters(queue).recvCancelled.get must be_==(1)
+
+      val close = recv.poll(2, TimeUnit.SECONDS)
+      close must notBeNull
+      close.cancelled must beFalse
+      close.open must beTrue
+
+      val closeText = new String(close.message.array)
+      closeText must be_==(sendText)
+
+      close.close
+      close.cancelled must beFalse
+      close.open must beFalse
+      grab.queueCounters(queue).recvCancelled.get must be_==(1)
+
     }
   }
 }

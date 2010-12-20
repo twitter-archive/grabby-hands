@@ -30,6 +30,7 @@ import java.util.logging.Logger
 // TODO rename arg -- change socket to do so
 protected[grabbyhands] class MetaRequest(serverArg: String,
                                          serverCountersArg: Option[ServerCounters]) extends Socket {
+  def this(serverArg: String) = this(serverArg, None)
   server = serverArg
   socketName = "adhocrequest:" + server
   if (serverCountersArg.isDefined) {

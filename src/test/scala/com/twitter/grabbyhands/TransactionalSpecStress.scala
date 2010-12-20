@@ -75,7 +75,7 @@ object TransactionalSpecStress extends SpecBase(50) {
       if (queueIdx == testNumQueues) queueIdx = 0
       buffer must notBeNull
       val recvTest = new String(buffer.message.array)
-      buffer.close(true)
+      buffer.close()
       recvTest must be_==(sendText)
     }
     endMs = System.currentTimeMillis

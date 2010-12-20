@@ -52,7 +52,7 @@ class GrabbyHands(val config: Config) {
     queues(queue).recvQueue
   }
 
-  /** Returns an internal queue that delivers new messages from Kestrel. */
+  /** Returns an internal queue that delivers new transactional messages from Kestrel. */
   def getRecvTransQueue(queue: String): BlockingQueue[Read] = {
     if (!config.recvTransactional) throw new IllegalStateException("Transactional read not set")
     queues(queue).transRecvQueue

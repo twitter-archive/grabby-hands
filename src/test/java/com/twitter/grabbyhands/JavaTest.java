@@ -26,7 +26,8 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 public class JavaTest {
-  protected List<String> servers = Arrays.asList("localhost:22133");
+  protected String hostPort = "localhost:22133";
+  protected List<String> servers = Arrays.asList(hostPort);
   protected String queue = "grabby_javatest";
   protected List<String> queues = Arrays.asList(queue);
   protected GrabbyHands grabbyHands = null;
@@ -36,6 +37,8 @@ public class JavaTest {
       grabbyHands.join();
       grabbyHands = null;
     }
+    MetaRequest meta = new MetaRequest(hostPort);
+    meta.deleteQueue(queue);
   }
 
   @Test public void testCreate() {
@@ -95,17 +98,25 @@ public class JavaTest {
 
       String recvText = new String(read.getMessage().array());
       assertEquals(recvText, sendText);
-      assertFalse(read.completed());
+      assertTrue(read.open());
       assertFalse(read.cancelled());
 
       send.put(new Write(read));
       read.awaitComplete(4, TimeUnit.SECONDS);
-      assertTrue(read.completed());
+      assertFalse(read.open());
       assertFalse(read.cancelled());
 
       read = recv.poll(4, TimeUnit.SECONDS);
       assertNotNull(read);
-      read.close(false);
+      read.cancel();
+      assertFalse(read.open());
+      assertTrue(read.cancelled());
+
+      read = recv.poll(4, TimeUnit.SECONDS);
+      assertNotNull(read);
+      read.close();
+      assertFalse(read.open());
+      assertFalse(read.cancelled());
 
       read = recv.poll(1, TimeUnit.SECONDS);
       assertNull(read);

@@ -29,6 +29,7 @@ class QueueCounters() {
   val kestrelGetTimeouts = new AtomicLong()
   val protocolError = new AtomicLong()
   val sendCancelled = new AtomicLong()
+  val recvCancelled = new AtomicLong()
 
   def toMap(): Map[String, Long] = {
     val rv = new HashMap[String, Long]()

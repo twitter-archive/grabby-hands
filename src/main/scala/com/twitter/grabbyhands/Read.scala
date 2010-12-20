@@ -18,48 +18,57 @@ package com.twitter.grabbyhands
 
 import java.nio.ByteBuffer
 import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.atomic.AtomicBoolean
 
-/** Wraps outgoing messages. */
+/** Wraps incoming messages. */
 class Read(val message: ByteBuffer, val connection: ConnectionRecv)
 {
   def this(str: String) = this(ByteBuffer.wrap(str.getBytes()), null)
   def this(bytes: Array[Byte]) = this(ByteBuffer.wrap(bytes), null)
-  protected val completedLatch = new CountDownLatch(1)
-  protected val abortLatch = new CountDownLatch(1)
+  protected val openLatch = new CountDownLatch(1)
+  protected val wasCancelled = new AtomicBoolean(false)
 
   def getMessage(): ByteBuffer = message
   def getConnection(): ConnectionRecv = connection
 
-  def awaitComplete(timeout: Int, units: TimeUnit) {
-    completedLatch.await(timeout, units)
-  }
 
-  /** Returns only once the message has been sent to a Kestrel. */
-  def awaitComplete() {
-    completedLatch.await(99999, TimeUnit.DAYS)
-  }
-
-  /** Returns true if transaction is completed or aborted */
-  def completed(): Boolean = {
-    completedLatch.getCount() == 0
-  }
-
-  protected[grabbyhands] def close(success:Boolean) {
-    if (success) {
-      completedLatch.countDown()
+  protected[grabbyhands] def complete(closed: Boolean) {
+    if (closed) {
+      close()
     } else {
-      abort()
+      cancel()
     }
   }
 
-  /** Cancels a write waiting in the local queue. */
-  def abort() {
-    abortLatch.countDown()
-    connection.abortRead()
+  /** Returns only once the transaction has been closed, aborted, or timeout occurs. */
+  def awaitComplete(timeout: Int, units: TimeUnit) {
+    openLatch.await(timeout, units)
+  }
+
+  /** Returns only once the transaction has been closed or aborted. */
+  def awaitComplete() {
+    openLatch.await(99999, TimeUnit.DAYS)
+  }
+
+  /** Returns true if transaction is still open, that is neither completed nor cancelled */
+  def open(): Boolean = {
+    openLatch.getCount != 0
+  }
+
+  /** Closes a transaction on the Kestrel as successful. */
+  def close() {
+    openLatch.countDown()
+  }
+
+  /** Cancels this read transaction on the Kestrel. */
+  def cancel() {
+    connection.cancelRead()
+    wasCancelled.set(true)
+    openLatch.countDown()
   }
 
   /** Returns true if write was cancelled before it could be sent to a Kestrel server. */
   def cancelled(): Boolean = {
-    abortLatch.getCount == 0
+    wasCancelled.get()
   }
 }
