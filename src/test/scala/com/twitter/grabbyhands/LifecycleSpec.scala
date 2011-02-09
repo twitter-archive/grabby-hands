@@ -104,14 +104,19 @@ object LifecycleSpec extends SpecBase(3) {
       val config = new Config()
       config.addServer(host + ":" + port)
       config.sendNumConnections = 1
-      config.recvTransactional = true;
       config.addQueues(queues.slice(0, 1).toArray)
-      config.queues.size must be_==(1)
+      config.recvTransactional = true;
+      config.addQueues(queues.slice(1, 2).toArray)
+      config.queues.size must be_==(2)
 
       grab = new GrabbyHands(config)
-      grab.counters.threads.get must be_==(2)
+      grab.counters.threads.get must be_==(4)
 
-      grab.getRecvTransQueue(queues(0))
+      grab.getRecvQueue(queues(0))
+      grab.getRecvQueue(queues(1)) must throwA[IllegalStateException]
+
+      grab.getRecvTransQueue(queues(1))
+      grab.getRecvTransQueue(queues(0)) must throwA[IllegalStateException]
     }
 
   }

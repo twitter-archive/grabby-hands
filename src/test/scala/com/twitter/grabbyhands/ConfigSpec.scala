@@ -132,12 +132,17 @@ object ConfigSpec extends SpecBase(2) {
     "set transactional" in {
       val config = new Config()
       config.addServer("host:1")
-      val queues = config.addQueues(List("q1"))
+      val nonTransQueues = config.addQueues(List("q_non_trans"))
       config.recvTransactional = true
+      val transQueues = config.addQueues(List("q_trans"))
 
-      queues.size must be_==(1)
+      nonTransQueues.size must be_==(1)
+      config.queues.get("q_non_trans").get.recvTransactional must beFalse
+
+      transQueues.size must be_==(1)
+      config.queues.get("q_trans").get.recvTransactional must beTrue
+
       config.recvTransactional must be_==(true)
     }
-
   }
 }
